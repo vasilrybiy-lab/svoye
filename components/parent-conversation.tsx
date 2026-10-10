@@ -23,7 +23,6 @@ export default function ParentConversation() {
       <p className="pc-lead">Про інтереси й енергію, про те, що вже виходить і за що її цінують, про те, що для неї важливо та кому хотілося б допомагати. Питаємо про конкретні випадки, а не про «правильні» відповіді. На будь-яке запитання можна відповісти «не знаю», а тему пропустити.</p>
       <div className="pc-cards">{asks.map((a) => <article key={a.h}><h3>{a.h}</h3><p>{a.p}</p></article>)}</div>
       <p className="pc-note">Наприкінці ми коротко кажемо, що почули, а дитина виправляє. У підсумку є карта з мітками «сказала дитина», «ми припускаємо» та «перевіримо дією». Що саме передається родині, узгоджуємо до початку.</p>
-      <Link className="text-link" href="/pytannya-dlya-rozmovy">Прочитати добірку з 12 запитань</Link>
     </section>
     <section className="pc-limits section-pad" id="parent-limits">
       <p className="eyebrow">МЕЖІ</p>
