@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://svoye-career-path.vasil-rybiy.chatgpt.site/sitemap.xml

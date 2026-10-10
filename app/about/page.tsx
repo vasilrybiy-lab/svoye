@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
+import MobileMenu from "@/components/mobile-menu";
 import { MoveUpRight, Sparkles } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Про мене — людина за підходом «Своє»",
+  title: "Про мене: людина за підходом «Своє»",
   description: "Історія засновника, шлях до «Своє» та філософія вибору напряму через дію.",
+  alternates: { canonical: "/about" },
+  openGraph: { url: "/about", title: "Про мене: людина за підходом «Своє» | Своє" },
 };
 
 export default function AboutPage() {
   return <main className="about-page">
     <header className="site-header">
       <a className="logo" href="/" aria-label="Своє — головна сторінка">своє<span>.</span></a>
-      <nav aria-label="Навігація сторінки «Про мене»"><a href="#founder">Людина</a><a href="#founder-story">Людина за підходом</a><a href="#philosophy">Філософія</a></nav>
+      <nav aria-label="Навігація сторінки «Про мене»"><a href="#founder">Людина</a><a href="#founder-story">Людина за підходом</a><a href="#philosophy">Філософія</a></nav><MobileMenu/>
       <div className="parent-header-actions">
         <a className="parent-home-link" href="/">На головну</a>
         <a className="header-cta" href="/#contact">Поговорімо <MoveUpRight size={17}/></a>

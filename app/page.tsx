@@ -1,4 +1,6 @@
 "use client";
+import { faqItems } from "@/lib/faq";
+import MobileMenu from "@/components/mobile-menu";
 
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowRight, Check, Copy, MoveUpRight, Play } from "lucide-react";
@@ -51,7 +53,7 @@ export default function Home() {
   return <main>
     <header className="site-header">
       <a className="logo" href="#top" aria-label="Своє — на початок">своє<span>.</span></a>
-      <nav aria-label="Основна навігація"><a href="#approach">Підхід</a><a href="/parents">Батькам</a><a href="/about">Про мене</a><a href="#results">Результат</a><a href="#voices">Відгуки</a></nav>
+      <nav aria-label="Основна навігація"><a href="#approach">Підхід</a><a href="/parents">Батькам</a><a href="/about">Про мене</a><a href="#results">Результат</a><a href="#voices">Відгуки</a></nav><MobileMenu/>
       <a className="header-cta" href="#contact">Поговорімо <MoveUpRight size={17}/></a>
     </header>
 
@@ -60,7 +62,7 @@ export default function Home() {
         <p className="eyebrow"><span className="eyebrow-line"/> НАПРЯМ ПОЧИНАЄТЬСЯ З ТЕБЕ</p>
         <h1>Знайди свій напрям<span className="period">.</span><br/><em>Перевір</em> його в дії<span className="period">.</span></h1>
         <p className="hero-lead">Ще не знаєш, ким бути й що далі після школи? Це нормально. Ми допоможемо знайти кілька напрямів і перевірити їх маленькими пробами. Без ярликів і тиску.</p>
-        <div className="hero-actions"><a className="button button-dark" href="#trials">Обрати пробу <ArrowRight size={20}/></a><a className="text-link" href="#case">Побачити приклад результату <ArrowDown size={17}/></a></div>
+        <div className="hero-actions"><a className="button button-dark" href="#trials">Обрати пробу <ArrowRight size={20}/></a><a className="text-link" href="#results">Побачити приклад результату <ArrowDown size={17}/></a></div>
         <a className="hero-parent-link" href="/parents">Я з батьків — як підтримати вибір дитини?</a>
         <div className="hero-note"><span className="note-star">✳</span><span>Для тих, хто вже має мрію,<br/>і для тих, хто ще шукає.</span></div>
       </div>
@@ -92,7 +94,7 @@ export default function Home() {
       <div className="voices-reserved"><div className="reserved-label"><span>МІСЦЕ ДЛЯ МАЙБУТНІХ ІСТОРІЙ</span><span>↘</span></div><div className="reserved-content"><p>Що я спробував чи спробувала?<br/>Що мене здивувало?<br/>Що хочу спробувати далі?</p><span>Три запитання для короткого відео із субтитрами та текстовою версією. Реальні історії публікуються лише за згодою учасників.</span></div><div className="reserved-mark" aria-hidden="true">“</div></div>
     </section>
 
-    <section className="faq section-pad"><div className="faq-head"><p className="eyebrow">ПЕРЕД ПОЧАТКОМ</p><h2>Коротко про <em>важливе.</em></h2></div><div className="faq-list"><details><summary>Мені скажуть, яку професію обрати?<span>+</span></summary><p>«Своє» допоможе обрати кілька напрямів, які варто спробувати, і спосіб перевірити кожен. Рішення залишається за тобою. Родина може підтримати тебе в цьому пошуку.</p></details><details><summary>Скільки часу це займе?<span>+</span></summary><p>Перший крок — розмова. Далі тривалість проб і пошуку навчальних програм залежить від твого запиту. Формат і вартість узгоджуються з тобою та родиною до початку роботи.</p></details><details><summary>Як можуть допомогти батьки?<span>+</span></summary><p>Підтримати твої проби, обговорити враження й допомогти оцінити доступність навчання. Твій голос залишається головним. Для батьків є <a href="/parents">окремий розділ про їхню участь</a>.</p></details><details><summary>Що відбувається із записом розмови та де тут ШІ?<span>+</span></summary><p>ШІ може допомогти впорядкувати записи й знайти варіанти для дослідження. Згода на запис і спосіб роботи з особистими матеріалами узгоджуються з тобою та родиною заздалегідь. Висновки перевіряє людина й обговорює їх з тобою.</p></details></div></section>
+    <section className="useful section-pad" id="useful"><p className="eyebrow">КОРИСНЕ ДЛЯ ВИБОРУ</p><h2>Читай, <em>поки думаєш.</em></h2><div className="useful-grid"><a className="useful-card" href="/kudy-vstupaty">Не знаєш, куди вступати після школи? З чого почати<span>Стаття →</span></a><a className="useful-card" href="/yak-obraty-spetsialnist">Як обрати спеціальність після 11 класу: 5 кроків<span>Стаття →</span></a><a className="useful-card" href="/yak-dopomohty-dytyni">Як допомогти дитині обрати професію: поради батькам<span>Для батьків →</span></a></div></section><section className="faq section-pad"><div className="faq-head"><p className="eyebrow">ПЕРЕД ПОЧАТКОМ</p><h2>Коротко про <em>важливе.</em></h2></div><div className="faq-list">{faqItems.map((f)=><details key={f.q}><summary>{f.q}<span>+</span></summary><p>{f.a}{f.href&&<> <a href={f.href}>{f.link}</a></>}</p></details>)}</div></section>
 
     <section className="contact section-pad" id="contact">
       <div className="contact-top"><p className="eyebrow">ПОЧАТИ МОЖНА З РОЗМОВИ</p><div className="contact-orbit">✳</div></div>

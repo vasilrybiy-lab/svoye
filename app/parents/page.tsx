@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
+import MobileMenu from "@/components/mobile-menu";
 import Link from "next/link";
 import { GraduationCap, Search, Wallet, Wrench } from "lucide-react";
 import CaseExamples from "@/components/case-examples";
 
 export const metadata: Metadata = {
-  title: "Своє для батьків — спокійніше підтримати вибір дитини",
-  description: "Що отримує родина, як перевіряються напрями, навчання й перспектива доходу та як підтримати власний вибір підлітка.",
+  title: "Профорієнтація для підлітків: як батькам підтримати вибір дитини",
+  description: "Що отримує родина, як перевіряються напрями, навчання й перспектива доходу та як підтримати власний вибір підлітка після школи.",
+  alternates: { canonical: "/parents" },
+  openGraph: { url: "/parents", title: "Профорієнтація для підлітків: як батькам підтримати вибір дитини | Своє" },
 };
 
 const outcomes = [
@@ -25,7 +28,7 @@ export default function ParentsPage() {
   return <main className="parents-page">
     <header className="site-header">
       <Link className="logo" href="/" aria-label="Своє — головна сторінка">своє<span>.</span></Link>
-      <nav aria-label="Навігація для батьків"><a href="#parent-results">Результат</a><a href="#case">Приклади</a><a href="#perspectives">Перспективи</a></nav>
+      <nav aria-label="Навігація для батьків"><a href="#parent-results">Результат</a><a href="#case">Приклади</a><a href="#perspectives">Перспективи</a></nav><MobileMenu/>
       <div className="parent-header-actions">
         <a className="parent-home-link" href="/">На головну</a>
         <a className="header-cta" href="#parent-start">З чого почати</a>
@@ -59,7 +62,7 @@ export default function ParentsPage() {
     <section className="parent-perspectives section-pad" id="perspectives" aria-labelledby="perspectives-title">
       <div className="parent-section-head"><p className="eyebrow">ЯК ОЦІНЮЄМО ПЕРСПЕКТИВИ</p><h2 id="perspectives-title">Інтерес, розвиток<br/><em>і можливість заробляти.</em></h2><p>Гідний дохід дає ресурс для самостійності та бажаного життя. Для кожного напряму важливо дослідити економічні можливості разом з інтересом дитини, її сильними сторонами й користю для інших.</p></div>
       <div className="parent-criteria">{criteria.map(({ icon: Icon, title, text }) => <article key={title}><Icon size={26} aria-hidden="true"/><h3>{title}</h3><p>{text}</p></article>)}</div>
-      <div className="parent-market-note"><p>Ринок змінюється, тому висновки залишаються робочими гіпотезами. Поточні вакансії та діапазони оплати дають орієнтири для перевірки, а не гарантію майбутнього доходу.</p><p>Біля конкретних даних про програми, попит і оплату мають бути джерело, дата перевірки та умови, до яких ці дані стосуються.</p></div>
+      <div className="parent-market-note"><p>Ринок змінюється, тому висновки залишаються робочими гіпотезами. Поточні вакансії та діапазони оплати дають орієнтири для перевірки, а не гарантію майбутнього доходу.</p></div>
     </section>
 
     <section className="parent-role section-pad" aria-labelledby="parent-role-title">
