@@ -3,18 +3,10 @@ import { faqItems } from "@/lib/faq";
 import MobileMenu from "@/components/mobile-menu";
 
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowRight, Check, Copy, MoveUpRight, Play } from "lucide-react";
+import { ArrowDown, ArrowRight, Check, Copy, MoveUpRight } from "lucide-react";
 import TrialExperience from "@/components/trial-experience";
 import CaseExamples from "@/components/case-examples";
-import ConversationBlocks from "@/components/conversation-blocks";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-
-const steps = [
-  { number: "01", title: "Поговорити", text: "Розмова до двох годин, з перервою. Питаємо про приклади з твого життя: що тебе заряджає, що вже виходить, що тобі важливо. Можна сказати «не знаю» й пропустити тему." },
-  { number: "02", title: "Обрати напрями", text: "З твоїх інтересів і сильних сторін з’являються кілька напрямів. Для кожного важливо з’ясувати, кому потрібна така робота й чи можна нею заробляти." },
-  { number: "03", title: "Спробувати", text: "Для кожного напряму — невелика задача або розмова з фахівцем. Так ти можеш відчути, як це — займатися такою справою." },
-  { number: "04", title: "Вирішити, що далі", text: "Обговорюєш, що сподобалося, що було складно й чи хочеться продовжувати. Далі — наступна проба або пошук місця, де можна навчатися." },
-];
 
 const teenContactText = "Вітаю! Хочу дізнатися про роботу у «Своє» й спробувати кілька напрямів перед вибором навчання. Розкажіть, будь ласка, як проходить перша розмова, що я отримаю та яка вартість.";
 const parentContactText = "Вітаю! Хочу дізнатися про індивідуальну роботу у «Своє» для моєї дитини. Розкажіть, будь ласка, як проходить перша розмова, яка роль батьків, що отримає родина та яка вартість.";
@@ -54,7 +46,7 @@ export default function Home() {
   return <main>
     <header className="site-header">
       <a className="logo" href="#top" aria-label="Своє — на початок">своє<span>.</span></a>
-      <nav aria-label="Основна навігація"><a href="#approach">Підхід</a><a href="/parents">Батькам</a><a href="/about">Про мене</a><a href="#results">Результат</a><a href="#voices">Відгуки</a></nav><MobileMenu/>
+      <nav aria-label="Основна навігація"><a href="/approach">Підхід</a><a href="/parents">Батькам</a><a href="/about">Про мене</a><a href="#results">Результат</a><a href="#voices">Відгуки</a></nav><MobileMenu/>
       <a className="header-cta" href="#contact">Поговорімо <MoveUpRight size={17}/></a>
     </header>
 
@@ -80,12 +72,12 @@ export default function Home() {
         <TabsContent value="teen" className="audience-panel"><div className="panel-number">ТВОЯ ТЕРИТОРІЯ</div><div><h3>Тобі не потрібно знати відповідь прямо зараз.</h3><p>Можна почати з того, що тобі цікаво й що хочеться спробувати. «Своє» допоможе обрати кілька напрямів і перевірити їх у дії. Після проби ти можеш змінити думку.</p><a href="#trials">Обрати невелику задачу</a></div><div className="panel-symbol">↗</div></TabsContent>
         <TabsContent value="parent" className="audience-panel"><div className="panel-number">ВАША ОПОРА</div><div><h3>Спокійніше підтримати вибір дитини.</h3><p>Що отримає родина, як перевіряються напрями й перспектива доходу та якою може бути ваша підтримка — у розділі для батьків.</p><a href="/parents">Перейти до розділу для батьків</a></div><div className="panel-symbol">✳</div></TabsContent>
       </Tabs>
+      <a className="text-link approach-link" href="/approach">Детальніше про підхід <ArrowRight size={17}/></a>
     </section>
 
-    <section className="method section-pad" id="experience"><div className="method-head"><p className="eyebrow">ЯК ПРАЦЮЄ «СВОЄ» / 4 КРОКИ</p><h2>Знайти напрям<br/><em>крок за кроком.</em></h2><p>Поговоримо про те, що тобі цікаво. Оберемо кілька напрямів і перевіримо їх невеликими задачами.</p><div className="video-placeholder"><span className="video-play" aria-hidden="true"><Play size={24} fill="currentColor"/></span><div><strong>Як розмова стає планом дій</strong><p>Відео засновника ще не додано. Тут буде коротке пояснення із субтитрами та текстовою версією.</p></div><span className="video-time">ЗГОДОМ</span></div></div><div className="steps">{steps.map((step)=><article className="step" key={step.number}><span className="step-number">{step.number}</span><div><h3>{step.title}</h3><p>{step.text}</p></div><ArrowRight className="step-arrow" size={22}/></article>)}</div></section>
 
-    <ConversationBlocks/>
-      <section className="trial-section section-pad" id="trials"><div className="trial-head"><div><p className="eyebrow">СПРОБУЙ І ПОМІТЬ</p><h2>Спробуй невелику задачу.<br/><em>Поміть, що тебе зачепило.</em></h2></div><p>Обери задачу на 10–20 хвилин. Спробуй і подивись, чи хочеться ще. Одна проба не визначає професію. Особистий план у «Своє» з’являється після розмови.</p></div><TrialExperience onContact={discussResult}/></section>
+
+    <section className="trial-section section-pad" id="trials"><div className="trial-head"><div><p className="eyebrow">СПРОБУЙ І ПОМІТЬ</p><h2>Спробуй невелику задачу.<br/><em>Поміть, що тебе зачепило.</em></h2></div><p>Обери задачу на 10–20 хвилин. Спробуй і подивись, чи хочеться ще. Одна проба не визначає професію. Особистий план у «Своє» з’являється після розмови.</p></div><TrialExperience onContact={discussResult}/></section>
 
     <section className="results section-pad" id="results"><div className="results-title"><p className="eyebrow">ЩО ТИ ОТРИМАЄШ</p><h2>Твій план.<br/><em>Твої наступні кроки.</em></h2></div><div className="result-grid"><article className="result-card lime"><span className="result-top">РОЗУМІННЯ</span><div className="result-glyph">✳</div><h3>Твої інтереси й сильні сторони</h3><p>Карта з твоїх слів: що тебе заряджає, що виходить (з прикладами), за що тебе цінують інші й що ти хочеш дати людям. Без оцінок і балів.</p></article><article className="result-card blue"><span className="result-top">ДІЯ</span><div className="result-glyph">↗</div><h3>План проб</h3><p>Напрями, які варто спробувати. Для кожного — конкретна дія, запитання до фахівця й підказки, на що звернути увагу після.</p></article><article className="result-card peach"><span className="result-top">НАВЧАННЯ</span><div className="result-glyph">◎</div><h3>Де можна навчатися</h3><p>Варіанти програм і закладів: чому вони можуть тобі підійти, що потрібно для вступу й що ще варто уточнити.</p></article></div><p className="results-footnote">Що саме буде у твоєму плані, залежить від запиту й обсягу роботи. Це узгоджується з тобою та родиною до початку.</p></section>
 
