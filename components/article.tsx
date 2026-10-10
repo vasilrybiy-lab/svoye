@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/link";
 import MobileMenu from "@/components/mobile-menu";
 
 export type Section = { h: string; p?: string[]; list?: string[] };

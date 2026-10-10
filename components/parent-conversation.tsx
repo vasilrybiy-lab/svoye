@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/link";
 
 const asks = [
   { h: "Що заряджає", p: "Що дитина робить і не помічає часу. Про що шукає інформацію сама." },

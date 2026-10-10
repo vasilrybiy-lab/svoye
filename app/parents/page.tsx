@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import MobileMenu from "@/components/mobile-menu";
 import ParentConversation from "@/components/parent-conversation";
-import Link from "next/link";
+import Link from "@/components/link";
 import { GraduationCap, Search, Wallet, Wrench } from "lucide-react";
 import CaseExamples from "@/components/case-examples";
 
