@@ -5,7 +5,6 @@ import MobileMenu from "@/components/mobile-menu";
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowRight, Check, Copy, MoveUpRight } from "lucide-react";
 import TrialExperience from "@/components/trial-experience";
-import CaseExamples from "@/components/case-examples";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const teenContactText = "Вітаю! Хочу дізнатися про роботу у «Своє» й спробувати кілька напрямів перед вибором навчання. Розкажіть, будь ласка, як проходить перша розмова, що я отримаю та яка вартість.";
@@ -79,9 +78,8 @@ export default function Home() {
 
     <section className="trial-section section-pad" id="trials"><div className="trial-head"><div><p className="eyebrow">СПРОБУЙ І ПОМІТЬ</p><h2>Спробуй невелику задачу.<br/><em>Поміть, що тебе зачепило.</em></h2></div><p>Обери задачу на 10–20 хвилин. Спробуй і подивись, чи хочеться ще. Одна проба не визначає професію. Особистий план у «Своє» з’являється після розмови.</p></div><TrialExperience onContact={discussResult}/></section>
 
-    <section className="results section-pad" id="results"><div className="results-title"><p className="eyebrow">ЩО ТИ ОТРИМАЄШ</p><h2>Твій план.<br/><em>Твої наступні кроки.</em></h2></div><div className="result-grid"><article className="result-card lime"><span className="result-top">РОЗУМІННЯ</span><div className="result-glyph">✳</div><h3>Твої інтереси й сильні сторони</h3><p>Карта з твоїх слів: що тебе заряджає, що виходить (з прикладами), за що тебе цінують інші й що ти хочеш дати людям. Без оцінок і балів.</p></article><article className="result-card blue"><span className="result-top">ДІЯ</span><div className="result-glyph">↗</div><h3>План проб</h3><p>Напрями, які варто спробувати. Для кожного — конкретна дія, запитання до фахівця й підказки, на що звернути увагу після.</p></article><article className="result-card peach"><span className="result-top">НАВЧАННЯ</span><div className="result-glyph">◎</div><h3>Де можна навчатися</h3><p>Варіанти програм і закладів: чому вони можуть тобі підійти, що потрібно для вступу й що ще варто уточнити.</p></article></div><p className="results-footnote">Що саме буде у твоєму плані, залежить від запиту й обсягу роботи. Це узгоджується з тобою та родиною до початку.</p></section>
+    <section className="results section-pad" id="results"><div className="results-title"><p className="eyebrow">ЩО ТИ ОТРИМАЄШ</p><h2>Твій план.<br/><em>Твої наступні кроки.</em></h2></div><div className="result-grid"><article className="result-card lime"><span className="result-top">РОЗУМІННЯ</span><div className="result-glyph">✳</div><h3>Твої інтереси й сильні сторони</h3><p>Карта з твоїх слів: що тебе заряджає, що виходить (з прикладами), за що тебе цінують інші й що ти хочеш дати людям. Без оцінок і балів.</p></article><article className="result-card blue"><span className="result-top">ДІЯ</span><div className="result-glyph">↗</div><h3>План проб</h3><p>Напрями, які варто спробувати. Для кожного — конкретна дія, запитання до фахівця й підказки, на що звернути увагу після.</p></article><article className="result-card peach"><span className="result-top">НАВЧАННЯ</span><div className="result-glyph">◎</div><h3>Де можна навчатися</h3><p>Варіанти програм і закладів: чому вони можуть тобі підійти, що потрібно для вступу й що ще варто уточнити.</p></article></div><p className="results-footnote">Що саме буде у твоєму плані, залежить від запиту й обсягу роботи. Це узгоджується з тобою та родиною до початку.</p><a className="text-link approach-link" href="/approach#case">Приклади з пілотної роботи <ArrowRight size={17}/></a></section>
 
-    <CaseExamples audience="teen"/>
 
 
 
