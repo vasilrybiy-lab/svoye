@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import MobileMenu from "@/components/mobile-menu";
+import ParentConversation from "@/components/parent-conversation";
 import Link from "next/link";
 import { GraduationCap, Search, Wallet, Wrench } from "lucide-react";
 import CaseExamples from "@/components/case-examples";
@@ -58,6 +59,8 @@ export default function ParentsPage() {
     </section>
 
     <CaseExamples/>
+
+    <ParentConversation />
 
     <section className="parent-perspectives section-pad" id="perspectives" aria-labelledby="perspectives-title">
       <div className="parent-section-head"><p className="eyebrow">ЯК ОЦІНЮЄМО ПЕРСПЕКТИВИ</p><h2 id="perspectives-title">Інтерес, розвиток<br/><em>і можливість заробляти.</em></h2><p>Гідний дохід дає ресурс для самостійності та бажаного життя. Для кожного напряму важливо дослідити економічні можливості разом з інтересом дитини, її сильними сторонами й користю для інших.</p></div>
