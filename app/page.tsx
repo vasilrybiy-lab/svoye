@@ -46,7 +46,7 @@ export default function Home() {
   return <main>
     <header className="site-header">
       <a className="logo" href="#top" aria-label="Своє — на початок">своє<span>.</span></a>
-      <nav aria-label="Основна навігація"><a href="/approach">Підхід</a><a href="/parents">Батькам</a><a href="/about">Про мене</a><a href="#results">Результат</a><a href="#voices">Відгуки</a></nav><MobileMenu/>
+      <nav aria-label="Основна навігація"><a href="/approach">Підхід</a><a href="/parents">Батькам</a><a href="/about">Про мене</a><a href="#results">Результат</a><a href="/reviews">Відгуки</a></nav><MobileMenu/>
       <a className="header-cta" href="#contact">Поговорімо <MoveUpRight size={17}/></a>
     </header>
 
@@ -83,10 +83,7 @@ export default function Home() {
 
     <CaseExamples audience="teen"/>
 
-    <section className="voices section-pad" id="voices">
-      <div className="voices-head"><p className="eyebrow">ІСТОРІЇ ПІСЛЯ ПРОБИ</p><h2>Що спробували.<br/><em>Що відкрили.</em></h2><p>Тут з’являтимуться історії школярів про власні проби: що вдалося, що здивувало й що захотілося спробувати далі. Поки опублікованих історій немає.</p></div>
-      <div className="voices-reserved"><div className="reserved-label"><span>МІСЦЕ ДЛЯ МАЙБУТНІХ ІСТОРІЙ</span><span>↘</span></div><div className="reserved-content"><p>Що я спробував чи спробувала?<br/>Що мене здивувало?<br/>Що хочу спробувати далі?</p><span>Три запитання для короткого відео із субтитрами та текстовою версією. Реальні історії публікуються лише за згодою учасників.</span></div><div className="reserved-mark" aria-hidden="true">“</div></div>
-    </section>
+
 
     <section className="useful section-pad" id="useful"><p className="eyebrow">КОРИСНЕ ДЛЯ ВИБОРУ</p><h2>Читай, <em>поки думаєш.</em></h2><div className="useful-grid"><a className="useful-card" href="/kudy-vstupaty">Не знаєш, куди вступати після школи? З чого почати<span>Стаття →</span></a><a className="useful-card" href="/yak-obraty-spetsialnist">Як обрати спеціальність після 11 класу: 5 кроків<span>Стаття →</span></a><a className="useful-card" href="/yak-dopomohty-dytyni">Як допомогти дитині обрати професію: поради батькам<span>Для батьків →</span></a><a className="useful-card" href="/ikigai-dlya-pidlitkiv">Ікігай для підлітків простими словами: що це і як допомагає<span>Стаття →</span></a><a className="useful-card" href="/pytannya-dlya-rozmovy">12 запитань, які допомагають зрозуміти себе<span>Стаття →</span></a></div></section><section className="faq section-pad"><div className="faq-head"><p className="eyebrow">ПЕРЕД ПОЧАТКОМ</p><h2>Коротко про <em>важливе.</em></h2></div><div className="faq-list">{faqItems.map((f)=><details key={f.q}><summary>{f.q}<span>+</span></summary><p>{f.a}{f.href&&<> <a href={f.href}>{f.link}</a></>}</p></details>)}</div></section>
 
