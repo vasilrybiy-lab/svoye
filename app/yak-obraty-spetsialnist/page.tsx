@@ -1,47 +1,11 @@
 import type { Metadata } from "next";
-import Article, { type Section } from "@/components/article";
+import Article from "@/components/article";
+import { getArticle } from "@/lib/articles";
+import { pageMeta } from "@/lib/site";
 
-const title = "Як обрати спеціальність після 11 класу: 5 кроків";
-export const metadata: Metadata = {
-  title,
-  description: "Як обрати спеціальність після школи: інтереси, кілька напрямів, перевірка на практиці, освітні маршрути, умови навчання й запасний план.",
-  alternates: { canonical: "/yak-obraty-spetsialnist" },
-  openGraph: { url: "/yak-obraty-spetsialnist", title: title + " | Своє" },
-};
-
-const sections: Section[] = [
-  {
-    "h": "1. Зрозумій свої інтереси й сильні сторони",
-    "p": [
-      "Випиши, що тобі цікаво, що виходить і що хочеться спробувати. Не оцінюй, просто збери."
-    ]
-  },
-  {
-    "h": "2. Визнач 2–3 напрями",
-    "p": [
-      "З усього списку виділи кілька напрямів, де інтерес і здібності перетинаються."
-    ]
-  },
-  {
-    "h": "3. З’ясуй, що стоїть за напрямом щодня",
-    "p": [
-      "Назва професії мало що пояснює. Знайди приклади щоденної роботи, запитай людину з цієї сфери, спробуй схожу задачу."
-    ]
-  },
-  {
-    "h": "4. Подивись освітні маршрути",
-    "p": [
-      "До професії можуть вести різні шляхи: університет, коледж, курси, навчання за кордоном. Для кожного перевір вимоги, вартість і доступність."
-    ]
-  },
-  {
-    "h": "5. Ухвали рішення й залиш запасний план",
-    "p": [
-      "Обери напрям, який хочеться спробувати наступним. Рішення можна переглянути, тож запасний варіант допомагає спокійніше рухатися."
-    ]
-  }
-];
+const article = getArticle("yak-obraty-spetsialnist");
+export const metadata: Metadata = pageMeta({ title: article.metaTitle, description: article.description, path: "/yak-obraty-spetsialnist" });
 
 export default function Page() {
-  return <Article title={title} lead="Вибір спеціальності не мусить бути стресовим. Пропонуємо п’ять кроків, які розбивають велике рішення на зрозумілі частини." sections={sections} cta={{"text": "Хочеш пройти ці кроки з підтримкою? Розкажи, з чого почати, і ми підкажемо, як це зробити.", "href": "/#contact", "label": "Підготувати запит на розмову"}} />;
+  return <Article article={article} />;
 }

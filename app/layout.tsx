@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SITE_URL } from "@/lib/site";
 
-// Змініть на власний домен, коли він з'явиться (також у public/robots.txt і public/sitemap.xml).
-const SITE_URL = "https://svoye-career-path.vasil-rybiy.chatgpt.site";
 const TITLE = "Своє — профорієнтація для старшокласників";
 const DESCRIPTION = "Не знаєш, куди вступати після школи? Розмова, малі проби й план: напрями, навчання та перспективи. Для старшокласників і батьків.";
 

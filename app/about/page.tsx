@@ -1,13 +1,9 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/site";
 import MobileMenu from "@/components/mobile-menu";
 import { MoveUpRight, Sparkles } from "lucide-react";
 
-export const metadata: Metadata = {
-  title: "Про мене: людина за підходом «Своє»",
-  description: "Історія засновника, шлях до «Своє» та філософія вибору напряму через дію.",
-  alternates: { canonical: "/about" },
-  openGraph: { url: "/about", title: "Про мене: людина за підходом «Своє» | Своє" },
-};
+export const metadata: Metadata = pageMeta({ title: "Про мене: людина за підходом «Своє»", description: "Хто стоїть за «Своє»: історія засновника, шлях від стратегії бізнесу до профорієнтації та підхід «спершу спробуй у дії».", path: "/about" });
 
 export default function AboutPage() {
   return <main className="about-page">

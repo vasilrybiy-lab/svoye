@@ -1,16 +1,12 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/site";
 import MobileMenu from "@/components/mobile-menu";
 import ParentConversation from "@/components/parent-conversation";
 import Link from "@/components/link";
 import { GraduationCap, Search, Wallet, Wrench } from "lucide-react";
 import CaseExamples from "@/components/case-examples";
 
-export const metadata: Metadata = {
-  title: "Профорієнтація для підлітків: як батькам підтримати вибір дитини",
-  description: "Що отримує родина, як перевіряються напрями, навчання й перспектива доходу та як підтримати власний вибір підлітка після школи.",
-  alternates: { canonical: "/parents" },
-  openGraph: { url: "/parents", title: "Профорієнтація для підлітків: як батькам підтримати вибір дитини | Своє" },
-};
+export const metadata: Metadata = pageMeta({ title: "Профорієнтація для підлітків: для батьків", description: "Що отримує родина, як перевіряються напрями, навчання й перспектива доходу та як підтримати власний вибір підлітка після школи.", path: "/parents" });
 
 const outcomes = [
   { title: "Зрозуміти, від чого відштовхуватися", text: "Картина інтересів, сильних сторін і умов, важливих для вибору: що захоплює дитину, що вже виходить і що може заважати рухатися." },

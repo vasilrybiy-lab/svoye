@@ -45,7 +45,7 @@ export default function Home() {
   return <main>
     <header className="site-header">
       <a className="logo" href="#top" aria-label="Своє — на початок">своє<span>.</span></a>
-      <nav aria-label="Основна навігація"><a href="/approach">Підхід</a><a href="/parents">Батькам</a><a href="/about">Про мене</a><a href="#results">Результат</a><a href="/reviews">Відгуки</a></nav><MobileMenu/>
+      <nav aria-label="Основна навігація"><a href="/approach">Підхід</a><a href="/parents">Батькам</a><a href="/about">Про мене</a><a href="#results">Результат</a><a href="/korysne">Корисне</a></nav><MobileMenu/>
       <a className="header-cta" href="#contact">Поговорімо <MoveUpRight size={17}/></a>
     </header>
 
@@ -83,7 +83,7 @@ export default function Home() {
 
 
 
-    <section className="useful section-pad" id="useful"><p className="eyebrow">КОРИСНЕ ДЛЯ ВИБОРУ</p><h2>Читай, <em>поки думаєш.</em></h2><div className="useful-grid"><a className="useful-card" href="/kudy-vstupaty">Не знаєш, куди вступати після школи? З чого почати<span>Стаття →</span></a><a className="useful-card" href="/yak-dopomohty-dytyni">Як допомогти дитині обрати професію: поради батькам<span>Для батьків →</span></a><a className="useful-card" href="/ikigai-dlya-pidlitkiv">Ікігай для підлітків простими словами: що це і як допомагає<span>Стаття →</span></a></div></section><section className="faq section-pad"><div className="faq-head"><p className="eyebrow">ПЕРЕД ПОЧАТКОМ</p><h2>Коротко про <em>важливе.</em></h2></div><div className="faq-list">{faqItems.map((f)=><details key={f.q}><summary>{f.q}<span>+</span></summary><p>{f.a}{f.href&&<> <a href={f.href}>{f.link}</a></>}</p></details>)}</div></section>
+    <section className="useful section-pad" id="useful"><p className="eyebrow">КОРИСНЕ ДЛЯ ВИБОРУ</p><h2>Читай, <em>поки думаєш.</em></h2><div className="useful-grid"><a className="useful-card" href="/kudy-vstupaty">Не знаєш, куди вступати після школи? З чого почати<span>Стаття →</span></a><a className="useful-card" href="/yak-dopomohty-dytyni">Як допомогти дитині обрати професію: поради батькам<span>Для батьків →</span></a><a className="useful-card" href="/ikigai-dlya-pidlitkiv">Ікігай для підлітків простими словами: що це і як допомагає<span>Стаття →</span></a></div><p className="useful-more"><a href="/korysne">Усі статті →</a></p></section><section className="faq section-pad"><div className="faq-head"><p className="eyebrow">ПЕРЕД ПОЧАТКОМ</p><h2>Коротко про <em>важливе.</em></h2></div><div className="faq-list">{faqItems.map((f)=><details key={f.q}><summary>{f.q}<span>+</span></summary><p>{f.a}{f.href&&<> <a href={f.href}>{f.link}</a></>}</p></details>)}</div></section>
 
     <section className="contact section-pad" id="contact">
       <div className="contact-top"><p className="eyebrow">ПОЧАТИ МОЖНА З РОЗМОВИ</p><div className="contact-orbit">✳</div></div>

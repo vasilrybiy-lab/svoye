@@ -1,49 +1,11 @@
 import type { Metadata } from "next";
-import Article, { type Section } from "@/components/article";
+import Article from "@/components/article";
+import { getArticle } from "@/lib/articles";
+import { pageMeta } from "@/lib/site";
 
-const title = "Як допомогти дитині обрати професію: поради батькам";
-export const metadata: Metadata = {
-  title,
-  description: "Практичні поради батькам: як підтримати підлітка у виборі професії та навчання без тиску, а з розмовою й перевіркою на практиці.",
-  alternates: { canonical: "/yak-dopomohty-dytyni" },
-  openGraph: { url: "/yak-dopomohty-dytyni", title: title + " | Своє" },
-};
-
-const sections: Section[] = [
-  {
-    "h": "Слухайте, перш ніж радити",
-    "p": [
-      "Дайте дитині розповісти, що її цікавить, навіть якщо це здається вам несерйозним. Часто за цікавістю стоять справжні здібності."
-    ]
-  },
-  {
-    "h": "Ставте запитання замість вердиктів",
-    "list": [
-      "Що тобі було цікаво в цьому?",
-      "Що б ти хотів спробувати далі?",
-      "Як я можу допомогти?"
-    ]
-  },
-  {
-    "h": "Допоможіть перевіряти, а не вгадувати",
-    "p": [
-      "Невеличка практична спроба, розмова з фахівцем чи відвідини закладу освіти розповідають про напрям більше, ніж загальні поради."
-    ]
-  },
-  {
-    "h": "Говоріть про реальні умови",
-    "p": [
-      "Обговоріть вартість навчання, відстань, вимоги на вступі та можливості родини. Робіть це спокійно й разом, а не як останній аргумент."
-    ]
-  },
-  {
-    "h": "Дозвольте змінювати думку",
-    "p": [
-      "Якщо після проби дитина передумала, це не втрата часу. Це частина пошуку, і вона робить остаточний вибір стійкішим."
-    ]
-  }
-];
+const article = getArticle("yak-dopomohty-dytyni");
+export const metadata: Metadata = pageMeta({ title: article.metaTitle, description: article.description, path: "/yak-dopomohty-dytyni" });
 
 export default function Page() {
-  return <Article title={title} lead="Підліткам важливо відчувати вашу підтримку, а не оцінку. Ось кілька речей, які допомагають." sections={sections} cta={{"text": "На окремій сторінці ми розповідаємо, як у «Своє» батьки підтримують пошук дитини.", "href": "/parents", "label": "Для батьків"}} />;
+  return <Article article={article} />;
 }

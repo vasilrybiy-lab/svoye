@@ -1,18 +1,14 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/site";
 import MobileMenu from "@/components/mobile-menu";
 
-export const metadata: Metadata = {
-  title: "Відгуки та історії після проби",
-  description: "Історії школярів після практичних проб у Своє: що спробували, що відкрили й що хочуть досліджувати далі. Поки опублікованих історій немає.",
-  alternates: { canonical: "/reviews" },
-  openGraph: { url: "/reviews", title: "Відгуки та історії після проби | Своє" },
-};
+export const metadata: Metadata = pageMeta({ title: "Відгуки та історії після проби", description: "Історії школярів після практичних проб у Своє. Сторінка наповнюється, коли з’являються історії, опубліковані за згодою учасників.", path: "/reviews", noindex: true });
 
 export default function ReviewsPage() {
   return <main className="reviews-page">
     <header className="site-header">
       <a className="logo" href="/" aria-label="Своє — головна сторінка">своє<span>.</span></a>
-      <nav aria-label="Основна навігація"><a href="/approach">Підхід</a><a href="/parents">Батькам</a><a href="/about">Про мене</a><a href="/reviews" aria-current="page">Відгуки</a></nav>
+      <nav aria-label="Основна навігація"><a href="/approach">Підхід</a><a href="/parents">Батькам</a><a href="/about">Про мене</a><a href="/korysne">Корисне</a></nav>
       <MobileMenu/>
       <a className="header-cta" href="/#contact">Поговорімо</a>
     </header>

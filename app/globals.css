@@ -162,3 +162,9 @@
 
 /* Separate reviews page */
 .reviews-page .voices-head h1{font-size:clamp(43px,4.7vw,69px);line-height:1.04;margin:0;font-weight:800;letter-spacing:-.065em}
+
+.article .article-meta{font-size:15px;color:#5b6670;margin:-6px auto 22px}
+.related{margin-top:56px}.related-list,.hub-list{list-style:none;padding:0;margin:16px auto 0}
+.related-list li{border-top:1.5px solid #cfccc0;padding:14px 0}.related-list li:last-child{border-bottom:1.5px solid #cfccc0}.related-list a{font-weight:700;font-size:18px;line-height:1.4}
+.hub-list li{border-top:1.5px solid #cfccc0;padding:20px 0}.hub-list li:last-child{border-bottom:1.5px solid #cfccc0}.hub-list a{display:block}.hub-list strong{display:block;font-size:22px;letter-spacing:-.5px;color:#111b28;line-height:1.25}.hub-list span{display:block;margin-top:6px;font-size:16px;color:#4b5563;line-height:1.5}
+.useful-more{margin-top:28px;font-weight:800}.useful-more a{border-bottom:1px solid #111b28}

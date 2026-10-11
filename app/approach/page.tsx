@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/site";
 import { ArrowRight, Play } from "lucide-react";
 import ConversationBlocks from "@/components/conversation-blocks";
 import CaseExamples from "@/components/case-examples";
 import MobileMenu from "@/components/mobile-menu";
 
-export const metadata: Metadata = {
-  title: "Підхід: як працює Своє",
-  description: "Чотири кроки роботи у Своє: розмова, вибір напрямів, практичні проби й наступні рішення. Як досліджуємо вміння та використовуємо п’ять складових ікігай.",
-  alternates: { canonical: "/approach" },
-  openGraph: { url: "/approach", title: "Підхід: як працює Своє | Своє" },
-};
+export const metadata: Metadata = pageMeta({ title: "Підхід: як працює Своє", description: "Чотири кроки роботи у Своє: розмова, вибір напрямів, практичні проби й наступні рішення. Як досліджуємо вміння та використовуємо п’ять складових ікігай.", path: "/approach" });
 
 const steps = [
   { number: "01", title: "Поговорити", text: "Розмова до двох годин, з перервою. Питаємо про приклади з твого життя: що тебе заряджає, що вже виходить, що тобі важливо. Можна сказати «не знаю» й пропустити тему." },
