@@ -111,3 +111,17 @@
 **Потрібний наступний крок:** вручну виконати [цей же тестовий workflow у n8n](https://svoyechat.app.n8n.cloud/workflow/4C57GJpxcdSNHMTE), прочитати фінальне `result=PASS_MOCK_ROUTING`, `cases_tested=17` з **нового виконання**, а також статус усіх 5 вузлів. Якщо виникла помилка — дослідити logs, не публікувати сценарій та не вмикати Google/Telegram.
 
 **Межа:** навіть PASS_MOCK_ROUTING перевірить **мокову логіку відповідей**, а не реальну обробку callback Telegram, з'єднання із Booking Engine чи коректне завершення Meet.
+
+## 8. Результат execution 129 — 14.10.2026
+
+Workflow `4C57GJpxcdSNHMTE` виконано вручну; n8n execution `129` має `status=success`.
+Перевірено виконання кожного з 5 вузлів: усі `success`.
+Фінальний вузол повернув `PASS_MOCK_ROUTING`, `cases_tested=17`; усі 17 елементів мають `pass=true`.
+Мокова логіка розрізняє `already_processing`, `already_booked`, `needs_review`, `expired`, `slot_unavailable`, `unauthorized`, `error` та невідомий статус.
+У звіті виконання `outbound_messages=0`, `calendar_api_calls=0`, `db_writes=0`.
+Повторно перевірено граф: workflow неопублікований, один ручний тригер, тестовий Postgres credential, тільки SQL `SELECT`, без Telegram і Google вузлів.
+Neon TEST після запуску: залишків fixture `9401` 0 заявок / 0 слотів, `held=0`, `booked=2`, `needs_review=3`, перетинів слотів 0.
+
+**Обмеження:** це мокові відповіді; справжню доставку callback з Telegram, інтеграційний виклик Booking Engine і Google Calendar **не тестували**. T02 залишається у роботі.
+
+**Наступний крок:** ізольований синтетичний callback → Neon TEST claim → розгалуження за реальним статусом, без Telegram send чи Google Create.
