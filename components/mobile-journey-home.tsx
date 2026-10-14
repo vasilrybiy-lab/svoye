@@ -106,7 +106,7 @@ export default function MobileJourneyHome() {
   useEffect(() => {
     let live = true;
     fetch("/api/website-handoff", { cache: "no-store" })
-      .then(async response => response.ok ? response.json() : { enabled: false })
+      .then(async response => response.ok ? (await response.json() as { enabled?: boolean }) : { enabled: false })
       .then(data => { if (live) setHandoffAvailable(data?.enabled === true); })
       .catch(() => { if (live) setHandoffAvailable(false); });
     return () => { live = false; };
