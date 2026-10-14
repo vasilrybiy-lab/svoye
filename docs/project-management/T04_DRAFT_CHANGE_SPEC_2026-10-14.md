@@ -88,4 +88,14 @@
 
 **Еталон для звірки host (read-only Neon endpoint metadata):** гілка **TEST** `test/booking-engine-v1` має host із префіксом `ep-late-recipe-b79lskph` (можливе доповнення `-pooler` або compute suffix), **основна** гілка `main` — `ep-twilight-cherry-b7nn1ql3` (аналогічно можливий суфікс). Ці значення — **адреси серверів, не паролі**. Не робити висновок, до якої гілки підключений `Postgres account`, доки його Host не звірено в n8n Credentials.
 
-**Найближча дія за R00:** перевірка credential, потім окреме погодження одноразової реальної контрольної події Google/Meet і лише мінімальні критичні приймальні перевірки. Релізні замки без цього не відкривати.
+**Оновлено після перевірки Host:** підтверджено прив'язку `Postgres account` саме до Neon `main`; деталі та наступна дія — у §8. Релізні замки залишаються закритими.
+
+## 8. Результат звірки Postgres account з Neon (14.10.2026)
+
+**Повідомлення власника після ручної перевірки n8n Credentials:** поле `Host` для `Postgres account` починається з **`ep-twilight-cherry-b7nn1ql3`**. Раніше read-only Neon endpoint metadata незалежно підтвердили, що цей префікс належить Neon **`main`**, default/primary branch `br-quiet-union-b7vsi9wk`; префікс TEST — `ep-late-recipe-b79lskph`.
+
+**Висновок:** старе n8n credential `Postgres account` (ID `g6xVZNIvZ3h3eutD`), яке використовують основні draft Telegram Assistant і Booking Engine, спрямоване до **Neon main**, **не** TEST. Це підтвердження **гілки за host**, а не перевірка правильності імені бази/ролі чи успішного SQL-підключення. Жодних запитів через це credential не виконувалося.
+
+**Правило для MVP:** не міняти production credential на TEST. Не запускати main-draft вручну через `Postgres account` як тест — навіть SELECT-гілки поруч із ними містять SQL-записи. Для синтетичних тестів використовувати тільки `Postgres — SvoyeChat TEST` у окремих ізольованих сценаріях. Основні draft залишити неопублікованими, `={{ false }}` gates не знімати, `Create an event` не активувати, поки не погоджено контрольований реальний календарний запис і критичний план відкату.
+
+**Наступна дія:** готувати один мінімальний критичний наскрізний acceptance-прохід (Neon main ↔ Google event ↔ Telegram) для окремого погодження, без нових некритичних матриць. Не називати продукт готовим до реальної доставки до такого проходу.
