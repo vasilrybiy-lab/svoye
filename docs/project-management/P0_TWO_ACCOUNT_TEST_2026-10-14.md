@@ -87,3 +87,12 @@
 - Telegram підтвердив доставку: клієнтові — негайне підтвердження з обіцянкою посилання за годину; власникові — окреме адміністративне повідомлення з інструкцією створення Telegram call link та командою /call. Права розділені між різними чатами.
 - **P0-01 Telegram booking/client+admin notifications PASS.** **P0-02 T−2h/T−1h ще не пройдено**: для перевірки T−2h не створювати URL до 08:00 15 жовтня; після нагадування створити й подати /call; о 09:00 перевірити доставку тільки клієнту, стан Neon і відсутність дублів.
 - Жодної додаткової події чи бронювання під час read-only перевірки не створено.
+
+
+## J. Посилання /call збережено заздалегідь — підтверджено (14.10.2026)
+
+- Адміністратор добровільно надіслав **справжнє** Telegram call link через `/call` о ~19:01 за Києвом. **Сире посилання не дублювати в документації.** Telegram Assistant n8n execution `804` success: sender і chat рівно owner `381617062`, owner-only gate passed; parse `valid=true`, Neon save `accepted`; підтвердження надіслане **тільки адміністратору**.
+- Read-only Neon о 19:02 за Києвом, заявка `8e4efc73-ba4f-43b9-8dab-edc1d33ac69f`: `status=booked`, `meeting_platform=telegram`, `telegram_call_link IS NOT NULL=true` і regex перевірка формату **PASS**; `telegram_call_link_sent_at=NULL`, `reminder_1h_attempted_at=NULL`, `reminder_1h_sent_at=NULL` (клієнту ще нічого не відправлено).
+- `owner_2h_reminder_attempted_at=NULL`, `owner_2h_reminder_sent_at=NULL`: ще не настав час, нагадування НЕ відправлялося; на 15.10 о 08:00 Europe/Kyiv очікуємо **жодного нагадування для owner**, бо SQL `Claim Missing Telegram at T-2h` вимагає `telegram_call_link IS NULL`.
+- `Appointment Reminders` active, published, schedule кожну хвилину. На 15.10 орієнтовно 09:00 Europe/Kyiv `Claim Ready Client Reminders` має вибрати тільки цю заброньовану заявку й доставити її Telegram-посилання тільки клієнту `chat_id=468455205`, потім записати `reminder_1h_sent_at` та `telegram_call_link_sent_at`. Це **очікування**, а не PASS: фактичний callback доставки і відсутність owner-нагадування перевірити завтра за n8n/Neon.
+- Нові налаштування workflow чи бронювання в рамках цієї перевірки не змінювалися.
