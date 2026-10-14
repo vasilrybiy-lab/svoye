@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import {
   ArrowLeft, ArrowRight, Check, ChevronRight, ClipboardCopy,
   Compass, FlaskConical, Hammer, HeartHandshake, LifeBuoy,
@@ -72,7 +72,7 @@ function RatingScale({ item, value, onChange, allowSkip = true }: {
   return <div className={`v2-scale ${skipped ? "v2-scale-skipped" : ""}`}>
     <div className="v2-scale-label"><label htmlFor={`v2-${item.id}`}>{item.label}</label><output htmlFor={`v2-${item.id}`}>{rating(value)}</output></div>
     {!skipped && <>
-      <div className="v2-scale-rail" style={{ "--v2-tone": color.bg, "--v2-fg": color.fg, "--v2-pct": `${pct}%` } as React.CSSProperties}>
+      <div className="v2-scale-rail" style={{ "--v2-tone": color.bg, "--v2-fg": color.fg, "--v2-pct": `${pct}%` } as CSSProperties}>
         <div className="v2-scale-track"><div className="v2-scale-filled" /></div>
         <span className="v2-scale-knob" aria-hidden="true"><Icon size={19} strokeWidth={2} /></span>
         <input id={`v2-${item.id}`} type="range" min="0" max="4" step="1"
