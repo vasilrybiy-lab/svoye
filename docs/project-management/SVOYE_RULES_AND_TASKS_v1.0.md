@@ -1,6 +1,6 @@
 # Своє — регламент роботи й реєстр задач
 
-**Версія:** 2.5 (T04: підготовлено ізольований parent → Engine TEST handoff)  
+**Версія:** 2.6 (T04: ізольований parent → Engine TEST handoff підтверджено)  
 **Дата стану:** 14.10.2026  
 **Напрям:** автоматизація запису на безкоштовну онлайн-консультацію
 
@@ -128,13 +128,15 @@
 **Перед MVP залишається критичною окрема ситуація:** невизначений результат Google Create або спроба повторного Create не повинні звільнити час, створити другу зустріч чи повідомити клієнта про неіснуючий запис. Це перевіряємо в T04/T06/T12, **не через відкладені тести T03**.
 
 ### T04 · Завершити Telegram → Booking Engine
-**Пріоритет:** P0 · **Статус:** У роботі (ізольований тест готовий, виконання очікується) · **Залежність:** T01–T02; критичні запобіжники Calendar (T03 не блокує)
+**Пріоритет:** P0 · **Статус:** У роботі (ізольований TEST handoff пройдено; робочий маршрут ще не зібрано) · **Залежність:** T01–T02; критичні запобіжники Calendar (T03 не блокує)
 
 **Задача:** Зв'язати реальний callback та Neon claim з Booking Engine, не допускаючи хибного підтвердження й повторного Google Create. Перед MVP тільки критичні сценарії за R11; інші відкладено.
 
 **Проміжний факт · 14.10.2026:** Read-only аудит підтвердив, що в Telegram Assistant (active 5 / draft 30 вузлів) позитивна гілка claim веде до тестової відповіді замість Engine. У Booking Engine (active 13 / draft 37) Google Create вимкнено і не має вхідного з'єднання; Booking Request не опубліковано. Це технічні блокери production, а не успішно перевірений маршрут.
 
-**Підготовлено, але ще НЕ запущено:** неопубліковані [Parent T04 TEST](https://svoyechat.app.n8n.cloud/workflow/Zqq2NzKmho6rAkP4) (14 вузлів, ручний synthetic Telegram callback → реальний Neon TEST claim → справжній вузол Execute Sub-workflow → повторний claim → адресне очищення) та [Child Engine TEST](https://svoyechat.app.n8n.cloud/workflow/ko3gMXLGy1DHNMq4) (3 вузли, тільки Neon TEST SELECT й обережна відповідь без booked). Всі 8 SQL credential явно звірені із TEST. Єдиний дозволений до наступної перевірки запуск — **ручний Parent один раз**, після нього — незалежна перевірка очищення. [Протокол T04](./T04_TEST_BRIDGE_2026-10-14.md).
+**Перевірено 14.10.2026:** Неопублікований [Parent TEST](https://svoyechat.app.n8n.cloud/workflow/Zqq2NzKmho6rAkP4) execution **#131** — `success`, 14/14 вузлів; [Child Engine TEST](https://svoyechat.app.n8n.cloud/workflow/ko3gMXLGy1DHNMq4) execution **#132** — `success`, 3/3 вузлів, `mode=integrated`. Справжній n8n Execute Sub-workflow передав усі 5 полів контракту в Child; Child перевірив реальний Neon TEST processing/held, повернув `engine_verified_waiting_calendar_test_only` і `booking_confirmed=false`. Перший claim `claimed`, повторний `already_processing`, рівно 1 held слот, 0 booked. Фінальний `PASS_T04_CHILD_WORKFLOW_BRIDGE`. Адресне очищення 1 заявки й 1 слота; незалежний TEST DB контроль показав 0 залишків і 0 конфліктів. [Фактичний протокол T04](./T04_TEST_BRIDGE_2026-10-14.md).
+
+**Критична межа доказу:** це інтеграція **двох окремих, неопублікованих TEST workflow**, а не реальна доставка Telegram callback/робочий Engine/Google Meet. T04 залишається у роботі. **Наступний крок:** підготувати правки відповідних неопублікованих чернеток Telegram Assistant та Booking Engine, щоб позитивний claim передавався до Engine, а інші статуси не повідомляли про фіктивне бронювання. Жодних production змін чи Calendar API без окремого погодження.
 
 **Критерій завершення MVP:** реальний контрольований Telegram callback → Neon → Engine, правильна прив'язка до користувача, відсутність дубля, підтвердження тільки після перевіреного Calendar/Meet та безпечний розбір невизначеності. Успішний synthetic Parent/Child TEST стане **лише проміжним доказом**, не закриттям T04.
 
@@ -265,6 +267,8 @@ MVP можна пропонувати до запуску лише після п
 
 
 ## 9. Журнал змін
+
+- **v2.6 · 14.10.2026:** n8n T04 Parent execution #131 (14/14) і Child execution #132 (3/3) завершилися success: реальний interworkflow handoff, Neon TEST claimed/already_processing, один held слот, без booked чи зовнішніх API, незалежно перевірено 0 залишків. T04 для production інтеграції залишено відкритим, R11 без змін.
 
 - **v2.5 · 14.10.2026:** T04 у роботі: звірено production/draft розриви; створено два ізольовані неопубліковані TEST workflow (Parent 14 вузлів, Child 3) з фактичним Execute Sub-workflow, реальним Neon TEST claim і суто тестовим Engine. Усі TEST credential звірено, графи без зовнішніх API. Ручний тест ще очікується, production без змін; R11 без змін.
 
