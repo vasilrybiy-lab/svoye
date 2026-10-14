@@ -1,6 +1,6 @@
 # Своє — регламент роботи й реєстр задач
 
-**Версія:** 2.6 (T04: ізольований parent → Engine TEST handoff підтверджено)  
+**Версія:** 2.7 (T04: специфікацію змін draft підготовлено до погодження)  
 **Дата стану:** 14.10.2026  
 **Напрям:** автоматизація запису на безкоштовну онлайн-консультацію
 
@@ -136,7 +136,7 @@
 
 **Перевірено 14.10.2026:** Неопублікований [Parent TEST](https://svoyechat.app.n8n.cloud/workflow/Zqq2NzKmho6rAkP4) execution **#131** — `success`, 14/14 вузлів; [Child Engine TEST](https://svoyechat.app.n8n.cloud/workflow/ko3gMXLGy1DHNMq4) execution **#132** — `success`, 3/3 вузлів, `mode=integrated`. Справжній n8n Execute Sub-workflow передав усі 5 полів контракту в Child; Child перевірив реальний Neon TEST processing/held, повернув `engine_verified_waiting_calendar_test_only` і `booking_confirmed=false`. Перший claim `claimed`, повторний `already_processing`, рівно 1 held слот, 0 booked. Фінальний `PASS_T04_CHILD_WORKFLOW_BRIDGE`. Адресне очищення 1 заявки й 1 слота; незалежний TEST DB контроль показав 0 залишків і 0 конфліктів. [Фактичний протокол T04](./T04_TEST_BRIDGE_2026-10-14.md).
 
-**Критична межа доказу:** це інтеграція **двох окремих, неопублікованих TEST workflow**, а не реальна доставка Telegram callback/робочий Engine/Google Meet. T04 залишається у роботі. **Наступний крок:** підготувати правки відповідних неопублікованих чернеток Telegram Assistant та Booking Engine, щоб позитивний claim передавався до Engine, а інші статуси не повідомляли про фіктивне бронювання. Жодних production змін чи Calendar API без окремого погодження.
+**Критична межа доказу:** це інтеграція **двох окремих, неопублікованих TEST workflow**, а не реальна доставка Telegram callback/робочий Engine/Google Meet. T04 залишається у роботі. **Специфікацію змін двох неопублікованих draft підготовлено**, але жоден із них поки не редагували: [T04 DRAFT CHANGE SPEC](./T04_DRAFT_CHANGE_SPEC_2026-10-14.md). Визначено контракт 5 полів, завантаження фактичної Neon заявки після `claimed`, відокремлення `already_processing` / `already_booked` / `needs_review` / unknown, захист від другого Create і блокування Google до окремого дозволу. **Наступний крок:** погодити обсяг редагування самих draft. Опубліковані workflow/Neon/Google незмінні.
 
 **Критерій завершення MVP:** реальний контрольований Telegram callback → Neon → Engine, правильна прив'язка до користувача, відсутність дубля, підтвердження тільки після перевіреного Calendar/Meet та безпечний розбір невизначеності. Успішний synthetic Parent/Child TEST стане **лише проміжним доказом**, не закриттям T04.
 
@@ -267,6 +267,8 @@ MVP можна пропонувати до запуску лише після п
 
 
 ## 9. Журнал змін
+
+- **v2.7 · 14.10.2026:** Подивилися актуальні draft/active Assistant та Booking Engine, підготували для погодження точну специфікацію критичних T04 змін. Неопубліковані основні чернетки ще не редагували; наступне — окреме погодження. R11 без змін.
 
 - **v2.6 · 14.10.2026:** n8n T04 Parent execution #131 (14/14) і Child execution #132 (3/3) завершилися success: реальний interworkflow handoff, Neon TEST claimed/already_processing, один held слот, без booked чи зовнішніх API, незалежно перевірено 0 залишків. T04 для production інтеграції залишено відкритим, R11 без змін.
 
