@@ -1,7 +1,7 @@
 # T04 — критичний тест зв’язку Telegram callback → Neon → Booking Engine
 
 **Дата підготовки:** 14.10.2026  
-**Статус:** **готово до ОДНОГО ручного запуску**, execution ще **НЕ** підтверджено.  
+**Статус:** ізольований Parent→Child TEST **успішно виконано (#131, #132)**. Критична інтеграція production і реальні Telegram/Google Calendar далі **НЕ перевірені**.  
 **Рівень ризику:** критичний — неправдиве підтвердження й подвійна календарна операція. За правилом R11 тести лише критичних сценаріїв до MVP.
 
 ## 1. Виявлена різниця між чернетками і production
@@ -55,3 +55,20 @@ SDK-валидація Parent (**14 вузлів**) і Child (**3 вузли**) 
 **Наступний крок після успішного TEST handoff:** погодити правки неопублікованих чернеток Assistant/Engine для їх реального з’єднання з `claimed` і консервативними повторними/невизначеними статусами. Перед публікацією — незалежна критична перевірка безпеки й план відкату.
 
 Див. [план запуску](./SVOYE_LAUNCH_PLAN_v1.0.md) і [реєстр задач R11](./SVOYE_RULES_AND_TASKS_v1.0.md).
+
+## 6. Фактичне виконання Parent #131 і Child #132 (14.10.2026)
+
+**Перевірено за даними виконань обох workflow, не тільки за загальним статусом.**
+
+- Parent `Zqq2NzKmho6rAkP4`: execution **#131**, `manual`, `success`, 14/14 вузлів успішно, 2026-10-14T00:56:22.705Z–00:56:26.423Z.
+- Child `ko3gMXLGy1DHNMq4`: execution **#132**, `integrated`, `success`, 3/3 вузлів успішно, 2026-10-14T00:56:25.639Z–00:56:25.804Z. Child отримав повний контракт з п’яти полів: `booking_id`, `telegram_user_id`, `chat_id`, `start_time`, `user_confirmed=true`.
+- Справжній вузол `Execute Sub-workflow` Parent одержав від Child `engine_verified_waiting_calendar_test_only`; Child SQL перевірив `eligible=true`, `test_marker=true`, повернув `engine_input_verified=true` і **`booking_confirmed=false`**.
+- Реальні DB-виклики: перший Neon TEST `svoye_claim_booking` → **`claimed`**, повтор з тим самим synthetic callback → **`already_processing`**. Проміжний аудит: `processing`, **1** slot `held`, **1** valid hold, **0** slot `booked`, `calendar_attempted=false`.
+- Маршрут відповіді: клієнтові не стверджується, що зустріч створена; повтор не запускає ще одне бронювання; невизначена операція веде лише до змодельованого `manual_review_no_retry` (не реальна помилка Google).
+- Адресне очищення видалило **1** тестовий held slot і **1** synthetic booking request. Фінальний вузол Parent повернув **`PASS_T04_CHILD_WORKFLOW_BRIDGE`**, `cleanup_requests=0`, `cleanup_slots=0`, `overlap_pairs=0`, `telegram_sends=0`, `google_calendar_calls=0`.
+
+**Незалежна повторна read-only перевірка Neon TEST** (project `morning-cake-04594300`, branch `br-delicate-heart-b7h6nwzw`): для fixture `…9701` — 0 заявок і 0 слотів; інші контрольні значення `booked=2`, `needs_review=3`, `held=0`, `overlap_pairs=0`. Не було потреби в додатковому очищенні.
+
+**Підсумок:** критичне з’єднання *двох ізольованих n8n TEST workflow* **PASS**. Це НЕ доказ доставки реального Telegram callback, працездатності неопублікованої/опублікованої production чернетки, реальної зайнятості календаря, створення Meet або recovery після реального Google timeout. Child працює **read-only** й не є production Booking Engine.
+
+**Наступний критичний крок:** підготувати зміну **неопублікованих** Telegram Assistant і Booking Engine для передачі результату `claimed` до Engine замість тестової відповіді, розділити `already_processing` / `already_booked` / `needs_review` / unknown, забезпечити, що `booked` надсилається тільки після фактичної перевірки Neon та Google. Окремо довести, що невизначений Google Create не запускається вдруге. Будь-які production зміни, реальна календарна подія та публікація — лише за окремим погодженням власника.
