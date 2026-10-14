@@ -44,3 +44,13 @@
 - Підключення Vercel доступне, але запити `get_git_deployment_context`, `list_teams`, `list_projects` та `git_namespaces(provider=github)` повернули **порожні набори**; через це **не створено** Vercel-проєкт та окрему публічну адресу.
 - Відповідальне налаштування: власник має надати Vercel доступ до GitHub-репозиторію `vasilrybiy-lab/svoye` у вибраній команді/workspace. Лише після цього можна створити окремий Vercel-проєкт **для B** й налаштувати його публікацію з гілки `svoye-mobile-v2` (а не `main`). Не чіпати адресу/проєкт сайту A.
 - Статична перевірка GitHub підтвердила імпорт дев’яти наявних мініпроб і наявність коду: обидві аудиторії, три напрями, три блоки з 8 шкалами, підсумок, адаптивні стилі та окремий файл CSS. **Віддалену збірку та фактичний UX ще не перевірено.**
+
+
+## Реалізовано: підготовка website → Telegram (14.10.2026)
+
+- У B-версії додано `GET/POST /api/website-handoff` (Next.js server-only, окремий від робочого бота), перегляд повного підсумку, явну згоду перед передачею та копіювання як безпечний fallback.
+- Контракт і кроки n8n/Neon: [WEBSITE_TELEGRAM_HANDOFF_CONTRACT.md](./WEBSITE_TELEGRAM_HANDOFF_CONTRACT.md). Доступ до `website_requests` ще НЕ налаштований; таблицю read-only перевірено. Жодних webhook/env secrets для інтеграції наразі нема, endpoint **fail-closed**, бот не приймає site `/start sv_` tokens.
+- Додано `.github/workflows/v2-next-build.yml` тільки до B, GitHub Actions Next build **PASS** на коміті `7d3df2f455fe9e5e25ea958a709bab407c328bcd`; Vercel **production READY** на тому самому SHA, проект `svoye-mobile-v2`, публічна адреса https://svoye-mobile-v2.vercel.app/ .
+- Реальний запит до публічного сайту та `/api/website-handoff` веб-інструментом цього чату перевірити не вдалося (інструмент не отримав доступ до URL), тож користувацьку перевірку робити у браузері телефона. `READY` підтверджує збірку/розгортання, не E2E.
+- У Vercel Git integration спостерігалися автоматичні **помилкові збірки main** в окремому проєкті B. Спроба встановити `commandForIgnoringBuildStep` для пропуску non-B-branch зроблена, але у скороченій відповіді `get_project` стан параметра не відображається. Потрібно додатково перевірити в Vercel Settings → Git → Production Branch, щоб B автоматично публікувався саме із `svoye-mobile-v2` і main не змінював B. Поточна production збірка зроблена з B за конкретним SHA.
+- Завершити живий P0 тест T−2h/T−1h у Telegram перед зміненням основного бота. Потім — створити окремий webhook запису token hash + 10-хв TTL і маршрут одноразового `/start sv_` у Telegram, перевірити на тестовій Neon branch, увімкнути env variables для B після E2E і контролю abuse/retention.
