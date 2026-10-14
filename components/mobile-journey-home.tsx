@@ -163,7 +163,7 @@ export default function MobileJourneyHome() {
       });
       const data: { telegramUrl?: string; error?: string } = await response.json();
       if (!response.ok || typeof data.telegramUrl !== "string" ||
-          !/^https:\\/\\/t[.]me\\/jerryforvasylbot[?]start=sv_[A-Za-z0-9_-]{43}$/.test(data.telegramUrl)) {
+          !new RegExp("^https://t[.]me/jerryforvasylbot[?]start=sv_[A-Za-z0-9_-]{43}$").test(data.telegramUrl)) {
         throw new Error(data.error || "Неможливо підготувати посилання.");
       }
       setHandoffUrl(data.telegramUrl);
