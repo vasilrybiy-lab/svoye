@@ -142,3 +142,17 @@
 .v2-scale-label label{font-size:15px}
 }
 @media(prefers-reduced-motion:reduce){.v2-scale-filled,.v2-scale-knob{transition:none}}
+
+/* Website -> Telegram handoff, additive to the original Svoye palette. */
+.v2-handoff-preview{border:1px solid #bcc9dd;border-radius:13px;margin:17px 0;background:#fff;overflow:hidden}
+.v2-handoff-preview summary{padding:14px 16px;cursor:pointer;font-weight:800;font-size:15px;line-height:1.4;list-style-position:inside}
+.v2-handoff-preview-text{white-space:pre-wrap;overflow-wrap:anywhere;padding:16px;border-top:1px solid #dce4e7;font-size:14px;line-height:1.55;max-height:280px;overflow-y:auto;color:var(--v2-ink)}
+.v2-consent{display:flex;align-items:flex-start;gap:12px;margin:17px 0;font-size:15px;line-height:1.5;max-width:730px;cursor:pointer}
+.v2-consent input{accent-color:var(--v2-blue);width:20px;height:20px;flex:0 0 20px;margin-top:3px}
+.v2-handoff .v2-button:disabled{background:#cdd7df;color:#47525c;cursor:not-allowed}
+.v2-handoff-copy{margin-top:20px;padding-top:16px;border-top:1px solid #cbd5e5}
+.v2-handoff .v2-copy-button{background:white;color:var(--v2-ink);border:1px solid #b8c9df}
+.v2-handoff-error{margin-top:12px!important;color:#8b2222!important;font-weight:750}
+.v2-handoff-success{background:#fff;padding:16px;border-radius:13px;margin:16px 0}
+.v2-handoff-success .v2-button{margin-top:8px}
+@media(max-width:760px){.v2-consent{font-size:15px}.v2-handoff .v2-button{width:100%}.v2-handoff-preview-text{max-height:none;overflow:visible}}
