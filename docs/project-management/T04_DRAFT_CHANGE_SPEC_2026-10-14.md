@@ -111,3 +111,24 @@
 - Залишаються ті самі `={{ false }}` release gates та disabled `Create an event` у неопублікованому Engine draft. Нічого не публікували, виконань main-дraft, SQL main writes чи Google Event Create не було.
 
 **Найкоротша дія:** власник підтверджує `Database=neondb`/`User=neondb_owner` у n8n Credentials та запропонований 30-хвилинний час (або називає інший). Потім підготувати один **контрольований n8n→Neon main→Google→Neon** test, з чітким одноразовим дозволом на подію, без масових чи високоризикових тестових сценаріїв та з окремим рішенням про публікацію.
+
+## 10. Preflight погодженого одноразового Google Meet / Neon main (14.10.2026)
+
+**Окремо підтверджено власником:**
+- У n8n `Postgres account`: **Host** відповідає Neon `main`, `Database=neondb`, `User=neondb_owner`.
+- Погоджена **рівно одна** реальна тестова Google Meet-подія в календарі «Своє — Консультації» на **15 жовтня 2026 року, 11:00–11:30 Europe/Kyiv**.
+- **Заборонено публікувати робочі workflow** без нового погодження. Погодження календарної події не слід трактувати як право на довільні записи в Neon main.
+
+**Фактичні незалежні read-only перевірки:**
+- Google Free/Busy: **0 busy і 0 errors** у календарі «Своє — Консультації» та особистому календарі на точний обраний 30-хвилинний час (моментальний зріз).
+- Neon `main`: поточні `current_database()=neondb`, `current_user=neondb_owner`; **0 protected-slot conflicts**, **0 pending/processing/booked/needs_review request conflicts** на обраний час; **0 held**.
+- П'ять функцій `svoye_claim_booking`, `svoye_begin_calendar_create`, `svoye_finalize_booking`, `svoye_mark_booking_review`, `svoye_release_unavailable_booking`: read-only MD5 коду **попарно однакові** в Neon TEST і Neon main. EXCLUDE `slot_no_overlaps` та унікальність `booking_request_id` підтверджено в обох гілках.
+- Неопубліковані Drafts unchanged: Assistant (37 вузлів, `versionId=6d28c5c4-16b5-4045-bcb8-f78a7ed5d17d`, published 5) та Engine (41 вузол, `versionId=a6dbe0b9-9e08-4b39-8ff8-e203c6f5acb6`, published 13). Усі три запобіжники (Assistant release false, Engine Calendar false і Google Create false), а Google Create disabled — залишені. **Жодного тесту в main-draft не запускали**.
+
+**Механіка тесту без publish:** потребувався один ручний окремий n8n одноразовий workflow із жорстким **HARD STOP перед будь-яким main SQL**, адресно захищеним INSERT синтетичної заявки `…9801` на узгоджений час, `svoye_claim_booking`, викликом **наявного Booking Engine draft** за п'ятипольним контрактом і read-only звіркою `booked` у main. Це критично потрібна тимчасова перевірка, а не додаткова матриця тестів. Формальна SDK і node-schema валідація **9/9** пройшла, але **створення n8n workflow заблоковане зовнішнім захистом**. Після цього пошук n8n підтвердив **0 workflow із цією назвою**, а незалежний Neon main SELECT підтвердив **0 заявок і 0 слотів** для тестового ID `…9801`. **Не пробували обходити блокування.**
+
+**Стан:** ❗ ЖОДНОЇ реальної календарної події не створено. ЖОДНОЇ синтетичної заявки в Neon main не створено. Не було publish, Google API write, SQL main write або Telegram send.
+
+**Подальше окреме уточнення дозволу:** чи санкціонує власник **рівно одну синтетичну заявку/held slot в Neon main** як невіддільну частину погодженого контрольного бронювання, а також тимчасове ввімкнення лише неопублікованого тестового маршруту для **одного ручного запуску**, без публікації. Лише після такого дозволу можна уточнювати можливий безпечний шлях виконання без обходу обмежень. Якщо це неможливо, прямо фіксувати блокер; не створювати окрему подію через Google Calendar connector, адже це не доводить n8n → Neon → Meet.
+
+**Доказова межа:** усі результати цього розділу — preflight/структура, не end-to-end виконання. Дійсність слота треба повторно перевірити безпосередньо перед реальним створенням.
