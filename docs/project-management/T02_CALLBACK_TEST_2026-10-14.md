@@ -155,3 +155,24 @@ Neon TEST після запуску: залишків fixture `9401` 0 заяв�
 **Межа висновків:** результат доведе інтеграцію синтетичних callback-параметрів, реального Neon TEST claim, безпечного маршруту відповіді та очищення в ізольованому n8n. **Не** доведе реальні Telegram-відправлення, чинний опублікований Assistant, виклик Booking Engine або створення Google Meet.
 
 **Наступний крок:** один ручний `Execute workflow` тільки на [ізольованій копії](https://svoyechat.app.n8n.cloud/workflow/NwBw6492OMd3Q41b). Потім зчитати node outputs / статуси, перевірити Neon TEST read-only і оновити цей протокол фактичними доказами, не підмінюючи очікуваний результат успіхом.
+
+## 11. Фактичне виконання критичного тесту — n8n #130 (14.10.2026)
+
+**Підтверджено, а не лише очікується:** ізольований workflow `NwBw6492OMd3Q41b`, ручне виконання `130`, статус `success`, початок `2026-10-14T00:36:39.056Z`, завершення `2026-10-14T00:36:42.391Z`. Зчитано виходи всіх 11 вузлів, кожен мав `executionStatus=success`.
+
+| Перевірка | Фактичний результат |
+| --- | --- |
+| Вставлено лише синтетичну pending-заявку | `status=pending`, ідентифікатор із суфіксом `9601` |
+| Перший фактичний `svoye_claim_booking` | `claimed` |
+| Другий ідентичний `svoye_claim_booking` | `already_processing` |
+| Стан Neon до очищення | `request_status=processing`, `slot_count=1`, `held_count=1`, `valid_holds=1`, `booked_slots=0`, `attempted_calendar=false` |
+| Маршрутизація за реальними результатами DB | `expected_pass=true`, повтор → `read_only_no_retry` |
+| Синтетична невизначеність | `manual_review_no_calendar_retry` (змодельована дія, не фактичний таймаут) |
+| Адресне очищення | видалено рівно 1 тестовий слот і 1 тестову заявку |
+| Фінальний вузол | **`PASS_CRITICAL_CALLBACK_CLAIM_ROUTE`**, `remaining_requests=0`, `remaining_slots=0`, `overlap_pairs=0` |
+
+**Незалежний повторний контроль Neon TEST:** `fixture_requests=0`, `fixture_slots=0`, `total_held=0`, `total_booked=2`, `total_review=3`, `overlap_pairs=0`. Опублікованих змін n8n немає; workflow залишається `active=false`, `activeVersionId=null`. Усі 7 PostgreSQL credential збігаються з перевіреним `Postgres — SvoyeChat TEST`; Google/Telegram вузлів немає.
+
+**Ключова межа:** підтверджено саме синтетичний callback → справжня DB-функція в Neon TEST → логіка реакції → очищення. Не тестували реальну доставку Telegram callback, виклик продукційного Booking Engine, Google Calendar Create, справжній SQL timeout чи реакцію на невідомий результат зовнішньої календарної операції. Тестова реакція на невизначеність була змодельована. Її не можна трактувати як доведений recovery після справжнього збою.
+
+**Рішення за R11:** повторювати позитивний та повторний сценарії не потрібно без змін реалізації. Наступний високоризиковий етап — T03: лише прострочений hold і `needs_review`, без повної матриці другорядних статусів. Продукційну інтеграцію та невизначений результат Google Create перевірити окремо в T04/T06 перед запуском MVP.
