@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   ArrowLeft, ArrowRight, Check, ChevronRight, ClipboardCopy,
   Compass, FlaskConical, Hammer, HeartHandshake, LifeBuoy,
@@ -97,6 +97,26 @@ export default function MobileJourneyHome() {
   const [noDifficulty, setNoDifficulty] = useState(false);
   const [notes, setNotes] = useState("");
   const [copied, setCopied] = useState<"idle" | "done" | "manual">("idle");
+  const [handoffAvailable, setHandoffAvailable] = useState(false);
+  const [handoffConsent, setHandoffConsent] = useState(false);
+  const [handoffBusy, setHandoffBusy] = useState(false);
+  const [handoffUrl, setHandoffUrl] = useState("");
+  const [handoffError, setHandoffError] = useState("");
+
+  useEffect(() => {
+    let live = true;
+    fetch("/api/website-handoff", { cache: "no-store" })
+      .then(async response => response.ok ? response.json() : { enabled: false })
+      .then(data => { if (live) setHandoffAvailable(data?.enabled === true); })
+      .catch(() => { if (live) setHandoffAvailable(false); });
+    return () => { live = false; };
+  }, []);
+
+  function resetHandoff() {
+    setHandoffUrl("");
+    setHandoffConsent(false);
+    setHandoffError("");
+  }
   const groupTasks = useMemo(() => microTrials.filter(t => t.category === category), [category]);
   const task: MicroTrial = groupTasks.find(t => t.id === taskId) ?? groupTasks[0];
   const group = directions.find(d => d.id === category)!;
@@ -105,17 +125,17 @@ export default function MobileJourneyHome() {
   const activeCriteria = stage === "interest" ? interest : stage === "difficulty" ? difficultyCriteria : continuationCriteria;
   const complete = activeCriteria.every(q => isAnswered(answers[q.id]));
   function begin(selected: TrialCategory) {
-    setCategory(selected); setTaskId(""); setAnswers({}); setNotes(""); setNoDifficulty(false); setCopied("idle"); setStage("task");
+    setCategory(selected); setTaskId(""); setAnswers({}); setNotes(""); setNoDifficulty(false); setCopied("idle"); resetHandoff(); setStage("task");
   }
   function selectTask(id: string) {
-    setTaskId(id); setAnswers({}); setNotes(""); setNoDifficulty(false); setCopied("idle");
+    setTaskId(id); setAnswers({}); setNotes(""); setNoDifficulty(false); setCopied("idle"); resetHandoff();
   }
   function next() {
     setCopied("idle");
     setStage(stages[Math.min(stageIndex + 1, stages.length - 1)]);
   }
   function back() { setStage(stages[Math.max(0, stageIndex - 1)]); }
-  function setAnswer(id: ScaleKey, value: Answer) { setAnswers(a => ({ ...a, [id]: value })); }
+  function setAnswer(id: ScaleKey, value: Answer) { setAnswers(a => ({ ...a, [id]: value })); resetHandoff(); }
   const observations = interest.filter(q => typeof answers[q.id] === "number")
     .sort((a,b) => (answers[b.id] as number) - (answers[a.id] as number));
   const top = observations.filter(q => answers[q.id] === answers[observations[0]?.id]);
@@ -130,6 +150,30 @@ export default function MobileJourneyHome() {
     ...(notes.trim() ? [`Мої нотатки: ${notes.trim()}`] : []),
     "Одна проба не визначає професію чи здібності; це спостереження для наступного кроку.",
   ].join("\n");
+  async function prepareTelegramHandoff() {
+    if (!handoffAvailable || !handoffConsent || handoffBusy) return;
+    setHandoffBusy(true);
+    setHandoffError("");
+    setHandoffUrl("");
+    try {
+      const response = await fetch("/api/website-handoff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consent: true, contextVersion: 1, messageText: summary }),
+      });
+      const data: { telegramUrl?: string; error?: string } = await response.json();
+      if (!response.ok || typeof data.telegramUrl !== "string" ||
+          !/^https:\\/\\/t[.]me\\/jerryforvasylbot[?]start=sv_[A-Za-z0-9_-]{43}$/.test(data.telegramUrl)) {
+        throw new Error(data.error || "Неможливо підготувати посилання.");
+      }
+      setHandoffUrl(data.telegramUrl);
+    } catch (error) {
+      setHandoffError(error instanceof Error ? error.message : "Спробуй ще раз або скопіюй підсумок.");
+    } finally {
+      setHandoffBusy(false);
+    }
+  }
+
   async function copySummary() {
     try {
       await navigator.clipboard.writeText(summary);
@@ -207,7 +251,7 @@ export default function MobileJourneyHome() {
           </div>
           <label className="v2-task-label" htmlFor="v2-notes">Що ти помітив/-ла? <span>(за бажанням)</span></label>
           <textarea id="v2-notes" rows={2} maxLength={1500} value={notes}
-            onChange={e => setNotes(e.target.value)} placeholder="Що вдалося, що хочеться змінити?"/>
+            onChange={e => { setNotes(e.target.value); resetHandoff(); }} placeholder="Що вдалося, що хочеться змінити?"/>
           <div className="v2-actions"><button className="v2-button" type="button" onClick={next}>Перейти до рефлексії <ArrowRight size={19}/></button>
             <button className="v2-textbtn" type="button" onClick={() => setStage("choose")}>Обрати інший напрям</button></div>
         </>}
@@ -244,13 +288,32 @@ export default function MobileJourneyHome() {
             </div>
           </div>
           <div className="v2-handoff"><h2>Продовжити в Telegram</h2>
-            <p>Коли підключимо захищену передачу результату, бот зможе продовжити цю розмову з твого дозволу. Поки що можеш скопіювати підсумок самостійно.</p>
-            <button className="v2-button dark" type="button" onClick={copySummary}>
-              {copied === "done" ? <><Check size={19}/> Підсумок скопійовано</> : <><ClipboardCopy size={19}/> Скопіювати підсумок</>}
-            </button>
-            {copied === "manual" && <><label className="v2-task-label" htmlFor="v2-copy-fallback">Скопіюй цей текст:</label>
-              <textarea id="v2-copy-fallback" rows={8} readOnly value={summary} onFocus={e => e.target.select()} /></>}
-            <p className="v2-helpnote">Нічого не надсилається автоматично. Посилання на бота додамо після перевірки інтеграції.</p>
+            <p>Підсумок твоєї проби може стати початком розмови з асистентом «Своє». Спочатку перевір, що саме передаватиметься.</p>
+            <details className="v2-handoff-preview">
+              <summary>Переглянути повний текст підсумку</summary>
+              <div className="v2-handoff-preview-text">{summary}</div>
+            </details>
+            {handoffAvailable ? <>
+              <label className="v2-consent">
+                <input type="checkbox" checked={handoffConsent} onChange={event => { setHandoffConsent(event.target.checked); setHandoffError(""); }} />
+                <span>Я погоджуюся передати цей підсумок, зокрема мої нотатки, боту «Своє» для продовження розмови. Код передачі діятиме 10 хвилин і спрацює один раз.</span>
+              </label>
+              {!handoffUrl ? <button className="v2-button dark" type="button"
+                disabled={!handoffConsent || handoffBusy} onClick={prepareTelegramHandoff}>
+                {handoffBusy ? "Готуємо перехід…" : "Підготувати перехід у Telegram"} <ArrowRight size={18}/>
+              </button> : <div className="v2-handoff-success" role="status">
+                <p>Твій одноразовий перехід підготовлено. Він не містить відповідей у посиланні й діє 10 хвилин.</p>
+                <a className="v2-button dark" href={handoffUrl} rel="noopener noreferrer">Відкрити Telegram <ArrowRight size={18}/></a>
+              </div>}
+              {handoffError && <p className="v2-handoff-error" role="alert">{handoffError}</p>}
+            </> : <p className="v2-helpnote">Безпечну автоматичну передачу до Telegram ще налаштовуємо. Зараз можна скопіювати результат і надіслати його самостійно. Нічого не відправляється без твоєї дії.</p>}
+            <div className="v2-handoff-copy">
+              <button className="v2-button v2-copy-button" type="button" onClick={copySummary}>
+                {copied === "done" ? <><Check size={19}/> Підсумок скопійовано</> : <><ClipboardCopy size={19}/> Скопіювати підсумок</>}
+              </button>
+              {copied === "manual" && <><label className="v2-task-label" htmlFor="v2-copy-fallback">Скопіюй цей текст:</label>
+                <textarea id="v2-copy-fallback" rows={8} readOnly value={summary} onFocus={e => e.target.select()} /></>}
+            </div>
           </div>
           <button className="v2-textbtn" type="button" onClick={() => setStage("choose")}>Спробувати інший напрям</button>
         </>}
