@@ -1,7 +1,7 @@
 # T02 — ізольований тест повторного Telegram-підтвердження
 
 **Дата:** 14.10.2026  
-**Статус:** частково перевірено; **реальне n8n manual execution не здійснено**, T02 залишається в роботі.  
+**Статус:** тестовий ручний запуск n8n **перевірено / PASS_READ_ONLY**; повний Telegram callback та інтеграційна маршрутизація **ще не перевірені**. T02 залишається в роботі.  
 **Дозвіл власника:** створити неопубліковану ізольовану тестову копію й перевірити синтетичні повторні натискання, без зміни робочого бота, реального Google Calendar і робочої Neon.
 
 ## 1. Створено ізольований n8n workflow
@@ -61,3 +61,25 @@
 4. Після інтеграційної перевірки — T03 TTL/hold expiry, не повторюючи сліпо можливий Calendar Create.
 
 **Повʼязані документи:** [Реєстр задач](./SVOYE_RULES_AND_TASKS_v1.0.md) · [Оперативний план](./SVOYE_LAUNCH_PLAN_v1.0.md) · [Попередній протокол T02](./T02_TEST_REPORT_2026-10-14.md).
+
+
+## 6. Перевірений ручний запуск n8n — execution #128 (14.10.2026)
+
+**Доказ:** ізольований workflow `4C57GJpxcdSNHMTE`, виконання `128`, `mode=manual`, `status=success`, початок `2026-10-14T00:14:10.012Z`, завершення `2026-10-14T00:14:12.642Z`.
+
+Прочитано **фактичні outputs усіх чотирьох вузлів**, а не лише загальний статус n8n:
+
+| Вузол | Статус | Перевірений вихід |
+| --- | --- | --- |
+| `TEST — Manual Trigger (read-only)` | success | {} |
+| `TEST — Two identical synthetic callbacks` | success | `source=SYNTHETIC_TEST_ONLY`, `same_data=true`; обидва сформовані callback payload ідентичні (без реальної доставки) |
+| `TEST Neon — Read fixture statuses ONLY` | success | 2 fixture-рядки: `booked → already_booked`, `needs_review → already_needs_review`; для обох `safe_fixture=true` |
+| `TEST — Check repeat-state mapping (NO SEND)` | success | **`result=PASS_READ_ONLY`**, `outbound_messages=0`, `calendar_operations=0`, `db_writes=0` |
+
+**Після запуску:** повторно перевірено незалежним `SELECT` із прямим зазначенням гілки Neon TEST: раніше використаний синтетичний fixture `…9401` має 0 залишкових заявок і 0 слотів; активних held=0; booked=2, needs_review=3 (попередні контрольні значення).
+
+Повторно прочитано граф n8n: **`active=false`**, **`activeVersionId=null`**, 4 вузли, PostgreSQL має credential `Postgres — SvoyeChat TEST` (той самий id, що у Booking Engine TEST), SQL містить лише `SELECT`; Telegram/Google вузли відсутні. Твердження про нуль зовнішніх дій підтримується графом виконання, не тільки текстом Code-вузла.
+
+**Межі результату:** це підтверджений ручний n8n read-only сценарій, а НЕ реальна подвійна доставка callback, НЕ два одночасні SQL claim, НЕ тест Google Calendar та НЕ реалізована маршрутизація клієнтських повідомлень.
+
+**Актуальний наступний крок:** окремо в TEST-маршруті змоделювати та перевірити розрізнення `claimed`, `already_processing`, `already_booked`, `already_needs_review`, `expired`, `slot_unavailable`, `unauthorized` та SQL-error так, щоб відповідь не містила неправдивого «зустріч не заброньована» для `already_booked` і щоб жодна невизначена відповідь не запускала повторний Google Create. Жодних реальних відправлень.
