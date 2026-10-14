@@ -83,3 +83,31 @@
 **Межі результату:** це підтверджений ручний n8n read-only сценарій, а НЕ реальна подвійна доставка callback, НЕ два одночасні SQL claim, НЕ тест Google Calendar та НЕ реалізована маршрутизація клієнтських повідомлень.
 
 **Актуальний наступний крок:** окремо в TEST-маршруті змоделювати та перевірити розрізнення `claimed`, `already_processing`, `already_booked`, `already_needs_review`, `expired`, `slot_unavailable`, `unauthorized` та SQL-error так, щоб відповідь не містила неправдивого «зустріч не заброньована» для `already_booked` і щоб жодна невизначена відповідь не запускала повторний Google Create. Жодних реальних відправлень.
+
+## 7. Mock-сценарії відповідей — конфігурація готова, запуск очікується (14.10.2026)
+
+**Нова версія тестового workflow:** `4C57GJpxcdSNHMTE`, draft `80a1caa7-9b0d-4b24-bc1b-2bd5b5302dcb`, **5 вузлів**. Після вузла `TEST — Check repeat-state mapping (NO SEND)` під'єднано `TEST — Verify safe callback messages (MOCK ONLY)`. Попередній результат #128 (`PASS_READ_ONLY`) належить **старій 4-вузловій версії** та **не доводить результат нового вузла**.
+
+**Тестова матриця:** 17 синтетичних статусів (після нормалізації): `claimed`, `already_processing`, `already_booked`, `booked`, `already_needs_review`, `needs_review`, `expired`, `already_expired`, `slot_unavailable`, `unauthorized`, `not_found`, `failed`, `already_cancelled`, `error`, `db_error`, `invalid_state`, `future_new_status` (невідоме значення).
+
+**Правила мокового маршруту:**
+
+| Статус / група | Запропонований наступний крок | Безпечна семантика тексту |
+| --- | --- | --- |
+| `claimed` | `engine_guarded_once` | Підтвердження отримано, але завершене бронювання **не обіцяємо** |
+| `already_processing` | `read_status_only` | Заявку обробляють, повторно запускати Engine за callback не слід |
+| `already_booked` / `booked` | `verify_neon_and_calendar` | Спочатку перевірити дійсність запису й деталі календаря; не стверджувати «не заброньована» |
+| `already_needs_review` / `needs_review` | `manual_review` | Ручне уточнення, без повторного Google Create |
+| `expired` / `already_expired` | `offer_new_slot` | Термін заявки минув; запропонувати новий час |
+| `slot_unavailable` | `offer_new_slot` | Час недоступний; не говорити про оформлену зустріч |
+| `unauthorized` / `not_found` | `stop` | Не розкривати даних чужого запису |
+| `failed` / `already_cancelled` | `stop_or_review` | Неактивна заявка; при суперечностях ручна перевірка |
+| `error` / `db_error` / `invalid_state` / невідомий статус | `manual_review` | Невизначений статус: ніякого сліпого повтору |
+
+**Вбудовані перевірки:** 17 очікуваних маршрутів; текст кожної тестової відповіді не довший за 200 символів; `already_booked` не веде до відповіді «не заброньована»; `already_processing` не запускає повторно Engine; невідомий результат веде на ручне уточнення. Попередня перевірка тестових векторів перед додаванням вузла пройшла, але **свідчення успіху всього n8n-виконання відсутнє до нового ручного запуску**.
+
+**Перевірка безпеки після редагування:** read-only перечитано граф — `active=false`, `activeVersionId=null`, рівно один `Manual Trigger`, **жодного** Telegram/Google node, єдиний PostgreSQL node робить тільки `SELECT` і підключений до `Postgres — SvoyeChat TEST` (`Eud66ZqcjWP2ssI4`). Зміни виконані **лише в ізольованому TEST workflow**, не в опублікованому Assistant.
+
+**Потрібний наступний крок:** вручну виконати [цей же тестовий workflow у n8n](https://svoyechat.app.n8n.cloud/workflow/4C57GJpxcdSNHMTE), прочитати фінальне `result=PASS_MOCK_ROUTING`, `cases_tested=17` з **нового виконання**, а також статус усіх 5 вузлів. Якщо виникла помилка — дослідити logs, не публікувати сценарій та не вмикати Google/Telegram.
+
+**Межа:** навіть PASS_MOCK_ROUTING перевірить **мокову логіку відповідей**, а не реальну обробку callback Telegram, з'єднання із Booking Engine чи коректне завершення Meet.
