@@ -86,4 +86,6 @@
 
 **Невизначеність credential:** доступний n8n-конектор показує лише назву/ID `Postgres account` (`g6xVZNIvZ3h3eutD`), але **не host/branch, database чи роль**. Отже не можна довести, що він вказує на Neon `main` або `test`; і не можна безпечно запускати draft до перевірки. Гілки Neon `main` (default) і `test/booking-engine-v1` підтверджено read-only. Перевірити `Postgres account` у **n8n Credentials** за host/DB/role без передавання пароля чи connection string у чат і порівняти з потрібним endpoint Neon. Після перевірки зафіксувати тільки назву гілки, без секретів.
 
+**Еталон для звірки host (read-only Neon endpoint metadata):** гілка **TEST** `test/booking-engine-v1` має host із префіксом `ep-late-recipe-b79lskph` (можливе доповнення `-pooler` або compute suffix), **основна** гілка `main` — `ep-twilight-cherry-b7nn1ql3` (аналогічно можливий суфікс). Ці значення — **адреси серверів, не паролі**. Не робити висновок, до якої гілки підключений `Postgres account`, доки його Host не звірено в n8n Credentials.
+
 **Найближча дія за R00:** перевірка credential, потім окреме погодження одноразової реальної контрольної події Google/Meet і лише мінімальні критичні приймальні перевірки. Релізні замки без цього не відкривати.
