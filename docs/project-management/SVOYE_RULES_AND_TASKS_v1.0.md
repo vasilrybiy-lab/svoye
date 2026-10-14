@@ -1,6 +1,6 @@
 # Своє — регламент роботи й реєстр задач
 
-**Версія:** 3.0 (T04: Google/Neon fail-closed draft готовий; credential ще не підтверджено)  
+**Версія:** 3.1 (T04: host Postgres account звірено з Neon main; релізні замки закриті)  
 **Дата стану:** 14.10.2026  
 **Напрям:** автоматизація запису на безкоштовну онлайн-консультацію
 
@@ -152,7 +152,7 @@
 
 **Подальші draft-зміни · 14.10.2026:** Booking Engine draft збільшено **39→41** вузол. Наявний Google event-get під'єднаний до критичного шляху, лише явний HTTP 404 може перейти до `svoye_begin_calendar_create`, решта невизначених помилок → `svoye_mark_booking_review`. Після підтвердження `granted` стоїть другий literal `={{ false }}` gate; Create node залишився disabled. Після Google success контролюються event ID, точний час, Meet URL і повторний Neon `booked` із перевіркою власника. Read-only аналіз графа підтвердив **0 досяжних Google Calendar node** за чинних замків. Published activeVersionId обох workflow незмінні. [Докази та межі](./T04_DRAFT_CHANGE_SPEC_2026-10-14.md#7-t04--googleneon-fail-closed-другий-етап-правок-14102026).
 
-**Відкритий критичний блокер:** `Postgres account` у старих/nовому SQL-вузлах Assistant і Engine має ідентифікатор, але через n8n-конектор **не видно host/DB/branch**. Тому його прив'язку до Neon `main` чи TEST **не доведено**; жодного execution через цей credential не виконано. Перед реальним тестовим бронюванням звірити host/DB/role в n8n Credentials, без передавання пароля. Не відкривати gates, не вмикати Google Create та не публікувати доти.
+**Критичний факт — host звірено з власником (14.10.2026):** n8n credential `Postgres account` (`g6xVZNIvZ3h3eutD`) має Host з префіксом `ep-twilight-cherry-b7nn1ql3`, що за read-only metadata Neon відповідає **основній гілці `main`**, а не TEST. Це підтверджує **гілку** за Host, але не database name, role чи робоче SQL-з’єднання. **Не використовувати основні draft для synthetic-тестів**, бо їх SQL-вузли можуть змінити робочі дані; у ізольованих TEST workflow залишається тільки `Postgres — SvoyeChat TEST`. Окреме підтвердження реального Google Create і публікації ще потрібне; false gates залишаються закритими. [Доказ та межі](./T04_DRAFT_CHANGE_SPEC_2026-10-14.md#8-результат-звірки-postgres-account-з-neon-14102026).
 
 **Критерій завершення MVP:** реальний контрольований Telegram callback → Neon → Engine, правильна прив'язка до користувача, відсутність дубля, підтвердження тільки після перевіреного Calendar/Meet та безпечний розбір невизначеності. Успішний synthetic Parent/Child TEST стане **лише проміжним доказом**, не закриттям T04.
 
@@ -283,6 +283,8 @@ MVP можна пропонувати до запуску лише після п
 
 
 ## 9. Журнал змін
+
+- **v3.1 · 14.10.2026:** Після перевірки Host у n8n Credentials власник підтвердив префікс Postgres account `ep-twilight-cherry-b7nn1ql3`; read-only Neon metadata встановили, що це `main`, а не TEST. Ризик переплутати TEST/MAIN у плані знято, але main draft не виконували; database/role і критичне E2E ще не доведені. Gates/production без змін.
 
 - **v3.0 · 14.10.2026:** Підготовлено мінімальний критичний Google event lookup→404/unknown→одноразовий Neon Create guard→Meet/finalize шлях лише в draft Booking Engine (41 вузол). Обидва literal-false замки та disabled Google Create збережено; статично недосяжні Google вузли; published unchanged. До реальної активації необхідно перевірити Postgres account host/branch, R00/R11 без змін.
 
