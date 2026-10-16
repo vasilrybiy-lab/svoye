@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { pageMeta } from "@/lib/site";
+import { svoyeTelegramLink } from "@/lib/telegram-links";
 import MobileMenu from "@/components/mobile-menu";
 import ParentConversation from "@/components/parent-conversation";
 import Link from "@/components/link";
@@ -25,7 +26,7 @@ export default function ParentsPage() {
   return <main className="parents-page">
     <header className="site-header">
       <Link className="logo" href="/" aria-label="Своє — головна сторінка">своє<span>.</span></Link>
-      <nav aria-label="Навігація для батьків"><a href="#parent-results">Результат</a><a href="#case">Приклади</a><a href="#perspectives">Перспективи</a></nav><MobileMenu/>
+      <nav aria-label="Навігація для батьків"><a href="#parent-results">Результат</a><a href="#case">Приклади</a><a href="#perspectives">Перспективи</a></nav><MobileMenu audience="parent"/>
       <div className="parent-header-actions">
         <a className="parent-home-link" href="/">На головну</a>
         <a className="header-cta" href="#parent-start">З чого почати</a>
@@ -72,7 +73,7 @@ export default function ParentsPage() {
     <section className="parent-start section-pad" id="parent-start" aria-labelledby="parent-start-title">
       <div className="parent-section-head"><p className="eyebrow">ФОРМАТ І ПЕРША РОЗМОВА</p><h2 id="parent-start-title">Почнімо з вашого<br/><em>запитання.</em></h2><p>Коротко опишіть, що зараз хвилює вас і дитину: вибір напряму, навчання чи перевірка вже наявної ідеї.</p></div>
       <div className="parent-start-details"><article><h3>Що узгоджується до початку</h3><p>Формат і кількість зустрічей, участь батьків, склад матеріалів, тривалість і вартість. Обсяг подальших проб та дослідження навчальних програм залежить від індивідуального запиту.</p></article><article><h3>Межі послуги</h3><p>«Своє» допомагає досліджувати професійні й освітні напрями. Послуга не є психотерапією та не гарантує вступу або майбутньої зарплати.</p></article></div>
-      <div className="parent-start-actions"><a className="button button-dark" href="/?audience=parent#contact">Підготувати запит на першу розмову</a><p>На головній сторінці можна скопіювати текст запиту. Прямий канал зв’язку ще не вказаний.</p></div>
+      <div className="parent-start-actions"><a className="button button-dark" href={svoyeTelegramLink("site_parent")} target="_blank" rel="noopener noreferrer">Поспілкуватися в Telegram</a><p>Запитайте бота своїми словами про «Своє». Можна почати без анкети й без бронювання консультації.</p></div>
     </section>
 
     <footer><Link className="logo" href="/">своє<span>.</span></Link><p>Підтримка родини. Власний вибір підлітка.</p><Link href="/">На головну</Link><small>© {new Date().getFullYear()} своє.</small></footer>
