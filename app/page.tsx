@@ -1,5 +1,6 @@
 "use client";
 import { faqItems } from "@/lib/faq";
+import { telegramChatLink } from "@/lib/telegram-links";
 import MobileMenu from "@/components/mobile-menu";
 
 import { useEffect, useState } from "react";
@@ -90,11 +91,14 @@ export default function Home() {
       <h2>Почати можна<br/><em>з {isParentContact ? "вашого" : "твого"} запитання.</em></h2>
       <div className="contact-bottom">
         <p>{isParentContact ? "Підготуйте коротке повідомлення про те, що хвилює вас і дитину. До початку роботи у «Своє» узгоджуються формат, склад матеріалів і вартість." : "Підготуй коротке повідомлення про те, що хочеш спробувати або з чим потрібна допомога. До початку роботи у «Своє» узгоджуються формат, склад матеріалів і вартість."}</p>
-        <button id="contact-copy" className="button button-lime" onClick={copyMessage} type="button">{copied ? <><Check size={20}/> Скопійовано</> : <><Copy size={20}/> Скопіювати текст запиту</>}</button>
+        <div className="contact-actions">
+          <a className="button button-dark" href={telegramChatLink(hasTrialResult ? "trial" : isParentContact ? "parent" : "teen")} target="_blank" rel="noopener noreferrer">Поспілкуватися в Telegram <MoveUpRight size={19}/></a>
+          <button id="contact-copy" className="button button-lime" onClick={copyMessage} type="button">{copied ? <><Check size={20}/> Скопійовано</> : <><Copy size={20}/> Скопіювати текст запиту</>}</button>
+        </div>
       </div>
       {hasTrialResult && <div className="contact-result"><label htmlFor="contact-draft">Запит із твоїм результатом — переглянь перед надсиланням</label><textarea id="contact-draft" value={contactMessage} onChange={event => {setContactMessage(event.target.value); setCopied(false);}} rows={8}/><p>Натискання кнопки копіює текст. Ти сам вирішуєш, кому його надіслати.</p></div>}
       {copyFailed && <div className="contact-result"><label htmlFor="contact-manual">{isParentContact ? "Не вдалося скопіювати автоматично. Виділіть та скопіюйте текст:" : "Не вдалося скопіювати автоматично. Виділи та скопіюй текст:"}</label><textarea id="contact-manual" readOnly value={contactMessage} rows={6} onFocus={event => event.target.select()}/></div>}
-      <div className="contact-pending"><strong>Прямий контакт ще не вказаний</strong><span>Поки можна підготувати текст запиту. Надіслати його через цей сайт зараз неможливо.</span></div>
+      <div className="contact-pending"><strong>Розмова продовжується в Telegram</strong><span>Кнопка відкриє бота «Своє». Після натискання Start можна написати своїми словами. Якщо є результат проби, його можна спочатку скопіювати й надіслати лише за бажанням.</span></div>
       <p className="contact-helper" aria-live="polite">{copied ? "Повідомлення скопійовано. Воно ще нікому не надіслане." : "Копіювання не надсилає повідомлення."}</p>
     </section>
     <footer><a className="logo" href="#top">своє<span>.</span></a><p>Простір для вибору, який починається з людини.</p><a href="#top">Нагору ↑</a><small>© {new Date().getFullYear()} своє.</small></footer>
