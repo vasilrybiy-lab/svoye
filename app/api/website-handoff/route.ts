@@ -1,10 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { svoyeTelegramBotUsername } from "@/lib/telegram-links";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const BOT_USERNAME = "jerryforvasylbot"; // Verified from the live Svoye Telegram bot.
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_BODY_BYTES = 9_000;
 const TOKEN_TTL_MS = 10 * 60 * 1000;
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({
-    telegramUrl: `https://t.me/${BOT_USERNAME}?start=sv_${token}`,
+    telegramUrl: `https://t.me/${svoyeTelegramBotUsername}?start=sv_${token}`,
     expiresInSeconds: TOKEN_TTL_MS / 1000,
   }, { headers: noStore });
 }
