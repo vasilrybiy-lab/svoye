@@ -156,3 +156,7 @@
 .v2-handoff-success{background:#fff;padding:16px;border-radius:13px;margin:16px 0}
 .v2-handoff-success .v2-button{margin-top:8px}
 @media(max-width:760px){.v2-consent{font-size:15px}.v2-handoff .v2-button{width:100%}.v2-handoff-preview-text{max-height:none;overflow:visible}}
+
+/* Lightweight Telegram entry; keeps mobile v2 journey and consent-based trial handoff intact. */
+.v2-telegram-entry{display:inline-flex;width:fit-content;max-width:100%;white-space:normal;margin-top:20px;text-align:center}
+.v2-handoff-simple .v2-button{margin:14px 0 8px;display:inline-flex;max-width:100%;white-space:normal}
