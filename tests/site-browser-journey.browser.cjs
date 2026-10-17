@@ -109,6 +109,11 @@ test('390px mobile: teen → actual micro-trial → reflection → summary → m
     assert.match(summary, /QA: вигадана ідея — дослідити світло/);
     assert.match(summary, /Одна проба не визначає професію/);
     await page.locator('.v2-copy-button').click();
+    await page.waitForFunction(() => {
+      const button = document.querySelector('.v2-copy-button');
+      return /скопійовано/i.test(button?.textContent || '') ||
+        Boolean(document.querySelector('#v2-copy-fallback'));
+    }, null, { timeout: 8000 });
     const copied = await page.locator('.v2-copy-button').innerText();
     const fallback = await page.locator('#v2-copy-fallback').count();
     assert.ok(/скопійовано/i.test(copied) || fallback === 1,
