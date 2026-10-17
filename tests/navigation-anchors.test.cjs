@@ -32,7 +32,7 @@ test('every static home-page hash link targets a real homepage ID', () => {
 
 test('contact anchor points to the homepage Telegram entry block', () => {
   assert.match(home, /className="v2-intro"\s+id="contact"/);
-  assert.match(home, /className="v2-telegram-entry"/);
+  assert.match(home, /className="[^"]*\bv2-telegram-entry\b[^"]*"/);
   assert.ok(homepageIds.has('contact'));
 });
 
