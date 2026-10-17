@@ -230,7 +230,7 @@ export default function MobileJourneyHome() {
       </> : <>
         <div className="v2-progress">
           <button type="button" className="v2-back" onClick={back}><ArrowLeft size={18}/> Назад</button>
-          <div className="v2-progress-dots" aria-label={`Етап ${stageIndex+1} з ${stages.length}`}>{stages.map((s,i) => <span key={s} className={stageIndex===i ? "current" : ""}/>)}</div>
+          <div className="v2-progress-dots" role="progressbar" aria-label="Проходження проби" aria-valuemin={1} aria-valuemax={stages.length} aria-valuenow={stageIndex+1}>{stages.map((s,i) => <span key={s} className={stageIndex===i ? "current" : ""}/>)}</div>
           <span>{stageIndex+1}/{stages.length}</span>
         </div>
         {stage === "task" && <>
