@@ -1,0 +1,38 @@
+name: SVOE mobile browser journey (synthetic)
+
+on:
+  push:
+    branches:
+      - "qa/mobile-browser-journey-*"
+  pull_request:
+    branches:
+      - "feature/v2-svoe-live-telegram-2026-10-16"
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      SVOYE_HANDOFF_BOT_READY: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install site dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install pinned Playwright only for CI (no project lock changes)
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.56.1
+      - name: Install Chromium and browser libraries
+        run: npx playwright install --with-deps chromium
+      - name: Build the actual site
+        run: npm run build
+      - name: Drive real mobile and desktop journeys against local build
+        run: node --test tests/site-browser-journey.browser.cjs
