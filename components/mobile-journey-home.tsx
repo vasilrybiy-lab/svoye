@@ -198,14 +198,14 @@ export default function MobileJourneyHome() {
           <button type="button" className={audience === "parent" ? "selected" : ""} onClick={() => setAudience("parent")}>Я з батьків</button>
         </div>
         {audience === "teen" ? <div className="v2-first">
-          <div className="v2-intro">
+          <div className="v2-intro" id="contact">
             <p className="v2-eyebrow">КИМ СТАТИ? КУДИ ВСТУПАТИ?</p>
             <h1>Знайди свій напрям.<br/><em>Перевір у дії.</em></h1>
             <p className="v2-lead">Не знаєш, що обрати після школи? Почни з того, що тобі цікаво.</p>
             <a className="v2-button dark v2-telegram-entry" href={svoyeTelegramLink("site_teen")} target="_blank" rel="noopener noreferrer">Поставити запитання в Telegram <ArrowRight size={18}/></a>
             <div className="v2-ribbons" aria-hidden="true"><span/><span/></div>
           </div>
-          <section className="v2-directions" aria-labelledby="v2-directions-title">
+          <section className="v2-directions" id="trials" aria-labelledby="v2-directions-title">
             <h2 id="v2-directions-title">Що тобі ближче?</h2>
             <div className="v2-direction-list">{directions.map(dir => {
               const Icon = dir.icon;
