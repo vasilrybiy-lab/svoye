@@ -180,6 +180,7 @@ test('automated WCAG 2.1 AA serious/critical checks on teen, parent and trial sc
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
   const axeScript = require.resolve('axe-core/axe.min.js');
+  const allBlocking = [];
   const scan = async label => {
     await page.addScriptTag({ path: axeScript });
     const result = await page.evaluate(async () => await window.axe.run(document, {
@@ -191,7 +192,7 @@ test('automated WCAG 2.1 AA serious/critical checks on teen, parent and trial sc
     }));
     console.log('Synthetic accessibility scan', label, JSON.stringify(findings));
     const blocking = findings.filter(f => f.impact === 'critical' || f.impact === 'serious');
-    assert.deepEqual(blocking, [], label + ': serious/critical accessibility issues');
+    allBlocking.push(...blocking.map(f => ({ screen: label, ...f })));
   };
   try {
     await page.goto(origin + '/', { waitUntil: 'networkidle' });
@@ -205,6 +206,7 @@ test('automated WCAG 2.1 AA serious/critical checks on teen, parent and trial sc
     await scan('parent detail');
     await page.goto(origin + '/approach', { waitUntil: 'networkidle' });
     await scan('approach detail');
+    assert.deepEqual(allBlocking, [], 'Serious/critical WCAG issues across scanned views');
   } finally {
     await context.close();
   }
