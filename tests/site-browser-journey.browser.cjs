@@ -8,28 +8,32 @@ const { spawn } = require('node:child_process');
 const { setTimeout: delay } = require('node:timers/promises');
 const { chromium } = require('playwright');
 
-const origin = 'http://127.0.0.1:4318';
+const liveOrigin = (process.env.SVOE_BROWSER_ORIGIN || '').trim();
+const origin = liveOrigin || 'http://127.0.0.1:4318';
+if (liveOrigin && liveOrigin !== 'https://svoe.live') {
+  throw Error('Only the exact public read-only smoke target is permitted');
+}
 let server;
 let browser;
 let stderr = '';
 
 before(async () => {
-  server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '4318'], {
+  if (!liveOrigin) server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '4318'], {
     cwd: process.cwd(),
     env: { ...process.env, SVOYE_HANDOFF_BOT_READY: 'false', SVOYE_HANDOFF_WEBHOOK_URL: '', SVOYE_HANDOFF_WEBHOOK_SECRET: '', NEXT_TELEMETRY_DISABLED: '1' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  server.stderr.on('data', part => { stderr += String(part).slice(0, 2000); });
+  if (server) server.stderr.on('data', part => { stderr += String(part).slice(0, 2000); });
   let ready = false;
   for (let i = 0; i < 65; i++) {
-    if (server.exitCode !== null) break;
+    if (server && server.exitCode !== null) break;
     try {
       const r = await fetch(origin, { signal: AbortSignal.timeout(1000) });
       if (r.ok) { ready = true; break; }
     } catch { /* next is not ready yet */ }
     await delay(350);
   }
-  assert.ok(ready, 'Next test server did not become ready: ' + stderr.slice(-900));
+  assert.ok(ready, 'Browser QA target did not respond: ' + stderr.slice(-900));
   browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 });
 
