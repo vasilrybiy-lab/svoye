@@ -32,3 +32,29 @@ jobs:
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+      - name: HTTP smoke-check built pages and disabled website handoff
+        shell: bash
+        env:
+          SVOYE_HANDOFF_BOT_READY: "false"
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: |
+          set -euo pipefail
+          ./node_modules/.bin/next start --hostname 127.0.0.1 --port 4317 >/tmp/svoe-next-qa.log 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 35); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:4317/; then break; fi
+            sleep 1
+          done
+          for route in / /approach /parents /about /korysne /reviews /kudy-vstupaty /yak-obraty-spetsialnist /yak-dopomohty-dytyni /ikigai-dlya-pidlitkiv /pytannya-dlya-rozmovy; do
+            status=$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:4317${route}")
+            if [ "$status" != "200" ]; then
+              echo "HTTP route ${route} returned ${status}"
+              exit 1
+            fi
+          done
+          curl --fail --silent http://127.0.0.1:4317/robots.txt | grep -Fq 'Sitemap: https://svoe.live/sitemap.xml'
+          curl --fail --silent http://127.0.0.1:4317/sitemap.xml | grep -Fq '<loc>https://svoe.live/</loc>'
+          curl --fail --silent http://127.0.0.1:4317/api/website-handoff |
+            node -e 'let b="";process.stdin.on("data",c=>b+=c);process.stdin.on("end",()=>{const x=JSON.parse(b);if(x.enabled!==false)process.exit(1);console.log("Handoff safely disabled")})'
+          echo "Site HTML routes, sitemap and fail-closed handoff: PASS"
