@@ -1,0 +1,30 @@
+name: SVOE site QA (no external calls)
+
+on:
+  push:
+    branches:
+      - "qa/**"
+      - "fix/**"
+  pull_request:
+    branches:
+      - "feature/v2-svoe-live-telegram-2026-10-16"
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies (without lifecycle scripts)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run isolated contract checks
+        run: node --test tests/*.test.cjs
