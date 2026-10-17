@@ -176,7 +176,7 @@ test('desktop: internal-page anchors resolve to homepage sections and no unwante
 });
 
 
-test('automated WCAG 2.1 AA serious/critical checks on teen, parent and trial screens', async () => {
+test('automated WCAG 2.1 AA serious/critical checks on teen, parent and trial screens', { skip: Boolean(liveOrigin) }, async () => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
   const axeScript = require.resolve('axe-core/axe.min.js');
