@@ -29,7 +29,7 @@ jobs:
       - name: Install site dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Install pinned Playwright only for CI (no project lock changes)
-        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.56.1
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.56.1 axe-core@4.10.3
       - name: Install Chromium and browser libraries
         run: npx playwright install --with-deps chromium
       - name: Build the actual site
