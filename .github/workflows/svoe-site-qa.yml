@@ -58,3 +58,20 @@ jobs:
           curl --fail --silent http://127.0.0.1:4317/api/website-handoff |
             node -e 'let b="";process.stdin.on("data",c=>b+=c);process.stdin.on("end",()=>{const x=JSON.parse(b);if(x.enabled!==false)process.exit(1);console.log("Handoff safely disabled")})'
           echo "Site HTML routes, sitemap and fail-closed handoff: PASS"
+      - name: Public svoe.live GET-only smoke (no credentials)
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=$(mktemp)
+          curl --fail --silent --show-error --location --retry 2 --retry-delay 2 --connect-timeout 8 --max-time 25 https://svoe.live/ -o "$root"
+          grep -Eq 'id="contact"|id=\\"contact\\"' "$root"
+          grep -Eq 'id="trials"|id=\\"trials\\"' "$root"
+          for route in /approach /parents /about /korysne /reviews; do
+            code=$(curl --silent --show-error --location --output /dev/null --write-out '%{http_code}' --connect-timeout 8 --max-time 25 "https://svoe.live${route}")
+            test "$code" = "200" || { echo "Public HTTP failure ${route}: ${code}"; exit 1; }
+          done
+          curl --fail --silent --show-error --location --connect-timeout 8 --max-time 25 https://svoe.live/api/website-handoff |
+            node -e 'let d="";process.stdin.on("data",b=>d+=b);process.stdin.on("end",()=>{if(JSON.parse(d).enabled!==false)process.exit(1);console.log("Public handoff still disabled: PASS")})'
+          code=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 8 --max-time 25 https://www.svoe.live/)
+          test "$code" = "308" || { echo "Unexpected www redirect: $code"; exit 1; }
+          echo "Public HTTPS home, anchors, inner pages, disabled handoff, WWW redirect: PASS"
