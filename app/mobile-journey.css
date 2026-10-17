@@ -99,7 +99,7 @@
 .v2-next{background:var(--v2-lime);border-color:transparent}
 .v2-handoff{margin-top:23px;padding:27px;background:#e8edff;border-radius:19px}
 .v2-handoff .v2-button{margin-top:13px}
-.v2-footer{max-width:1180px;margin:20px auto 0;padding:23px clamp(20px,5vw,55px);border-top:1px solid #d3dbd8;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-size:13px;color:#53606c}
+.v2-footer{background:var(--v2-paper);max-width:1180px;margin:20px auto 0;padding:23px clamp(20px,5vw,55px);border-top:1px solid #d3dbd8;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-size:13px;color:#53606c}
 .v2-footer a{text-decoration:underline;text-underline-offset:4px;font-weight:700}
 @media(max-width:760px){
 .v2-header{padding:16px 18px}
