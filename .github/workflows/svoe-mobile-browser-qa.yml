@@ -36,3 +36,7 @@ jobs:
         run: npm run build
       - name: Drive real mobile and desktop journeys against local build
         run: node --test tests/site-browser-journey.browser.cjs
+      - name: Public svoe.live interactive browser journey (synthetic, no POST)
+        env:
+          SVOE_BROWSER_ORIGIN: "https://svoe.live"
+        run: node --test tests/site-browser-journey.browser.cjs
