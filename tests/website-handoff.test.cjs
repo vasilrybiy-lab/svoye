@@ -157,6 +157,7 @@ test('POST only issues opaque one-use-link-shaped token after explicit ack', { c
     assert.equal(sent.token_hash, createHash('sha256').update(token, 'utf8').digest('hex'));
     assert.equal(captured.options.headers.Authorization, 'Bearer ' + fakeSecret);
     assert.equal(captured.options.cache, 'no-store');
+    assert.equal(captured.options.redirect, 'error', 'Redirects must never forward user summaries');
     assert.equal(captured.endpoint.toString(), validUrl);
     assert.equal(Date.parse(sent.expires_at) >= start + 595000, true);
     assert.equal(Date.parse(sent.expires_at) <= Date.now() + 605000, true);
