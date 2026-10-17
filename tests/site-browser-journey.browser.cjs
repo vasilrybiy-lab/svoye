@@ -174,3 +174,38 @@ test('desktop: internal-page anchors resolve to homepage sections and no unwante
     await context.close();
   }
 });
+
+
+test('automated WCAG 2.1 AA serious/critical checks on teen, parent and trial screens', async () => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  const axeScript = require.resolve('axe-core/axe.min.js');
+  const scan = async label => {
+    await page.addScriptTag({ path: axeScript });
+    const result = await page.evaluate(async () => await window.axe.run(document, {
+      runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
+    }));
+    const findings = result.violations.map(v => ({
+      id: v.id, impact: v.impact, nodeCount: v.nodes.length,
+      targets: v.nodes.slice(0, 2).map(n => n.target.join(' > ')),
+    }));
+    console.log('Synthetic accessibility scan', label, JSON.stringify(findings));
+    const blocking = findings.filter(f => f.impact === 'critical' || f.impact === 'serious');
+    assert.deepEqual(blocking, [], label + ': serious/critical accessibility issues');
+  };
+  try {
+    await page.goto(origin + '/', { waitUntil: 'networkidle' });
+    await scan('teen homepage');
+    await page.getByRole('button', { name: /Я з батьків/ }).click();
+    await scan('parent homepage');
+    await page.getByRole('button', { name: /Я школяр/ }).click();
+    await page.locator('.v2-direction-list button').first().click();
+    await scan('trial task');
+    await page.goto(origin + '/parents', { waitUntil: 'networkidle' });
+    await scan('parent detail');
+    await page.goto(origin + '/approach', { waitUntil: 'networkidle' });
+    await scan('approach detail');
+  } finally {
+    await context.close();
+  }
+});
