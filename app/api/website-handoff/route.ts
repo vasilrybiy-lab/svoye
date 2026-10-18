@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { svoyeTelegramBotUsername } from "@/lib/telegram-links";
+import { CANARY_SUMMARY, isCanaryRequest, renderCanaryPage } from "@/lib/website-handoff-canary";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,8 +17,19 @@ const isReady = () =>
 
 const noStore = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 
-export async function GET() {
-  return NextResponse.json({ enabled: isReady() }, { headers: noStore });
+export async function GET(request?: NextRequest) {
+  if (isCanaryRequest(request?.nextUrl, process.env)) {
+    const nonce = randomBytes(18).toString("base64");
+    return new NextResponse(renderCanaryPage(nonce), { headers: {
+      ...noStore,
+      "Content-Type": "text/html; charset=utf-8",
+      "Referrer-Policy": "no-referrer",
+      "X-Robots-Tag": "noindex, nofollow",
+      "Content-Security-Policy": `default-src 'none'; script-src 'nonce-${nonce}'; connect-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
+    } });
+  }
+  const requestedCanary = request?.nextUrl.searchParams?.has("canary") ?? false;
+  return NextResponse.json({ enabled: !requestedCanary && isReady() }, { headers: noStore });
 }
 
 /**
@@ -31,7 +43,9 @@ export async function GET() {
  * redemption are ready; do not enable during live booking/reminder testing.
  */
 export async function POST(request: NextRequest) {
-  if (!isReady()) {
+  const requestedCanary = request.nextUrl.searchParams?.has("canary") ?? false;
+  const canary = isCanaryRequest(request.nextUrl, process.env);
+  if (requestedCanary ? !canary : !isReady()) {
     return NextResponse.json(
       { error: "Підключення Telegram ще готується. Скопіюй підсумок вручну." },
       { status: 503, headers: noStore },
@@ -68,6 +82,11 @@ export async function POST(request: NextRequest) {
       typeof text !== "string" || text.trim().length < 1 ||
       text.length > MAX_MESSAGE_LENGTH) {
     return NextResponse.json({ error: "Потрібна згода та короткий підсумок проби." }, { status: 400, headers: noStore });
+  }
+
+  // Reject any personal or modified text before it can reach n8n in diagnostic mode.
+  if (canary && text !== CANARY_SUMMARY) {
+    return NextResponse.json({ error: "Дозволено лише незмінений тестовий підсумок." }, { status: 400, headers: noStore });
   }
 
   const endpoint = process.env.SVOYE_HANDOFF_WEBHOOK_URL!;
@@ -121,3 +140,4 @@ export async function POST(request: NextRequest) {
     expiresInSeconds: TOKEN_TTL_MS / 1000,
   }, { headers: noStore });
 }
+

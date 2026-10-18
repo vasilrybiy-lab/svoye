@@ -24,6 +24,7 @@ const mockRequire = (name) => {
     }) } };
   }
   if (name === '@/lib/telegram-links') return { svoyeTelegramBotUsername: 'svoe_live_bot' };
+  if (name === '@/lib/website-handoff-canary') return require('../lib/website-handoff-canary.ts');
   return require(name);
 };
 new Function('require', 'module', 'exports', 'process', 'fetch', 'AbortSignal', compiled)(
@@ -163,3 +164,4 @@ test('POST only issues opaque one-use-link-shaped token after explicit ack', { c
     assert.equal(Date.parse(sent.expires_at) <= Date.now() + 605000, true);
   }, { fetcher: async (endpoint, options) => { captured = { endpoint, options }; return ack; } });
 });
+
