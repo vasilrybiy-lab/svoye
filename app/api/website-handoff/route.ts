@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
         expires_at: expiresAt,
       }),
       cache: "no-store",
+      redirect: "error", // Never forward a consented summary to a redirect target.
       signal: AbortSignal.timeout(8000),
     });
     if (!response.ok) throw new Error("handoff persistence failed");
