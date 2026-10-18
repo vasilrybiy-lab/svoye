@@ -109,7 +109,7 @@ test('390px mobile: teen → actual micro-trial → reflection → summary → m
       'https://t.me/svoe_live_bot?start=site_trial');
     assert.equal(await page.locator('.v2-consent').count(), 0);
     await page.locator('.v2-handoff-preview summary').click();
-    const summary = await page.locator('.v2-handoff-preview-text').innerText();
+    const summary = await page.locator('.v2-handoff-preview-text').textContent();
     assert.match(summary, /QA: вигадана ідея — дослідити світло/);
     assert.match(summary, /Одна проба не визначає професію/);
     await page.locator('.v2-copy-button').click();
@@ -286,7 +286,7 @@ test('handoff: changing difficulty resets consent and a prepared link', { skip: 
     await page.waitForSelector('.v2-handoff-success a');
     const before = await page.evaluate(() => window.__handoffQA.requests[0].body.messageText);
     await changeDifficultySummary(page);
-    assert.notEqual(await page.locator('.v2-handoff-preview-text').innerText(), before);
+    assert.notEqual(await page.locator('.v2-handoff-preview-text').textContent(), before);
     assert.equal(await page.locator('.v2-consent input').isChecked(), false);
     assert.equal(await page.locator('.v2-handoff-success').count(), 0);
     assert.equal(await page.getByRole('button', { name: /Підготувати перехід у Telegram/ }).isDisabled(), true);
@@ -306,7 +306,7 @@ test('handoff: a stale success or error cannot replace a newer request', { skip:
       const bodies = await page.evaluate(() => window.__handoffQA.requests.map(r => r.body));
       assert.notEqual(bodies[0].messageText, bodies[1].messageText);
       assert.equal(bodies[1].consent, true);
-      assert.equal(bodies[1].messageText, await page.locator('.v2-handoff-preview-text').innerText());
+      assert.equal(bodies[1].messageText, await page.locator('.v2-handoff-preview-text').textContent());
       await finishSyntheticHandoff(page, 0, 'A'.repeat(43), staleStatus);
       assert.equal(await page.locator('.v2-handoff-success').count(), 0);
       assert.equal(await page.locator('.v2-handoff-error').count(), 0);
