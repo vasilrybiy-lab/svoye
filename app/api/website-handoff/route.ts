@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { svoyeTelegramBotUsername } from "@/lib/telegram-links";
+import { CANARY_SUMMARY, isCanaryRequest, renderCanaryPage } from "@/lib/website-handoff-canary";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,8 +17,19 @@ const isReady = () =>
 
 const noStore = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 
-export async function GET() {
-  return NextResponse.json({ enabled: isReady() }, { headers: noStore });
+export async function GET(request?: NextRequest) {
+  if (isCanaryRequest(request?.nextUrl, process.env)) {
+    const nonce = randomBytes(18).toString("base64");
+    return new NextResponse(renderCanaryPage(nonce), { headers: {
+      ...noStore,
+      "Content-Type": "text/html; charset=utf-8",
+      "Referrer-Policy": "no-referrer",
+      "X-Robots-Tag": "noindex, nofollow",
+      "Content-Security-Policy": `default-src 'none'; script-src 'nonce-${nonce}'; connect-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
+    } });
+  }
+  const requestedCanary = request?.nextUrl.searchParams?.has("canary") ?? false;
+  return NextResponse.json({ enabled: !requestedCanary && isReady() }, { headers: noStore });
 }
 
 /**
@@ -31,7 +43,9 @@ export async function GET() {
  * redemption are ready; do not enable during live booking/reminder testing.
  */
 export async function POST(request: NextRequest) {
-  if (!isReady()) {
+  const requestedCanary = request.nextUrl.searchParams?.has("canary") ?? false;
+  const canary = isCanaryRequest(request.nextUrl, process.env);
+  if (requestedCanary ? !canary : !isReady()) {
     return NextResponse.json(
       { error: "Підключення Telegram ще готується. Скопіюй підсумок вручну." },
       { status: 503, headers: noStore },
@@ -70,6 +84,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Потрібна згода та короткий підсумок проби." }, { status: 400, headers: noStore });
   }
 
+  // Reject any personal or modified text before it can reach n8n in diagnostic mode.
+  if (canary && text !== CANARY_SUMMARY) {
+    return NextResponse.json({ error: "Дозволено лише незмінений тестовий підсумок." }, { status: 400, headers: noStore });
+  }
+
   const endpoint = process.env.SVOYE_HANDOFF_WEBHOOK_URL!;
   const secret = process.env.SVOYE_HANDOFF_WEBHOOK_SECRET!;
   let target: URL;
@@ -78,13 +97,19 @@ export async function POST(request: NextRequest) {
     if (target.protocol !== "https:" || !target.hostname.endsWith(".n8n.cloud")) {
       throw new Error("unexpected destination");
     }
+    if (canary && (target.origin !== "https://svoyechat.app.n8n.cloud" ||
+        target.pathname !== "/webhook/svoe-website-context-v1" || target.search || target.hash ||
+        target.username || target.password)) throw new Error("unexpected canary destination");
   } catch {
-    return NextResponse.json({ error: "Сервіс передачі ще не налаштований." }, { status: 503, headers: noStore });
+    return NextResponse.json({ error: "Сервіс передачі ще не налаштований.",
+      ...(canary ? { diagnostic: "CANARY_WRONG_WEBHOOK_ENDPOINT" } : {}),
+    }, { status: 503, headers: noStore });
   }
 
   const token = randomBytes(32).toString("base64url");
   const tokenHash = createHash("sha256").update(token, "utf8").digest("hex");
   const expiresAt = new Date(Date.now() + TOKEN_TTL_MS).toISOString();
+  let diagnostic = "UPSTREAM_TRANSPORT";
   try {
     const response = await fetch(target, {
       method: "POST",
@@ -103,15 +128,22 @@ export async function POST(request: NextRequest) {
       redirect: "error", // Never forward a consented summary to a redirect target.
       signal: AbortSignal.timeout(8000),
     });
-    if (!response.ok) throw new Error("handoff persistence failed");
+    if (!response.ok) {
+      diagnostic = `UPSTREAM_HTTP_${response.status}`;
+      throw new Error("handoff persistence failed");
+    }
+    diagnostic = "UPSTREAM_INVALID_JSON";
     const result: unknown = await response.json();
+    diagnostic = "UPSTREAM_STORAGE_NOT_CONFIRMED";
     if (!result || typeof result !== "object" ||
         (result as Record<string, unknown>).stored !== true) {
       throw new Error("missing persistence acknowledgement");
     }
   } catch {
     return NextResponse.json(
-      { error: "Не вдалося підготувати передачу. Спробуй ще раз або скопіюй текст." },
+      { error: "Не вдалося підготувати передачу. Спробуй ще раз або скопіюй текст.",
+        ...(canary ? { diagnostic } : {}),
+      },
       { status: 502, headers: noStore },
     );
   }
@@ -121,3 +153,4 @@ export async function POST(request: NextRequest) {
     expiresInSeconds: TOKEN_TTL_MS / 1000,
   }, { headers: noStore });
 }
+
