@@ -12,7 +12,7 @@ const host = 'svoye-mobile-v2-synthetic-vasilrybiy-1703.vercel.app';
 const url = () => new URL(`https://${host}/api/website-handoff?canary=${CANARY_QUERY_VALUE}`);
 const env = (now = Date.now()) => ({
   VERCEL_ENV: 'preview', VERCEL_URL: host, VERCEL_GIT_COMMIT_REF: CANARY_BRANCH,
-  SVOYE_HANDOFF_BOT_READY: 'false', SVOYE_HANDOFF_WEBHOOK_URL: 'https://example.n8n.cloud/webhook/synthetic',
+  SVOYE_HANDOFF_BOT_READY: 'false', SVOYE_HANDOFF_WEBHOOK_URL: 'https://svoyechat.app.n8n.cloud/webhook/svoe-website-context-v1',
   SVOYE_HANDOFF_WEBHOOK_SECRET: 'fake-local-only',
   SVOYE_HANDOFF_CANARY_UNTIL: new Date(now + 240000).toISOString(),
 });
@@ -119,5 +119,49 @@ test('form refuses arbitrary upstream link and does not retry failures', async (
     const elements = form(script, async () => { calls++; return { ok: true, json: async () => ({ telegramUrl: target }) }; });
     await elements.check.submit({ preventDefault() {} }); await elements.check.submit({ preventDefault() {} });
     assert.equal(elements.telegram.hidden, true); assert.equal(elements.telegram.href, undefined); assert.equal(calls, 1);
+  }
+});
+
+test('canary reports a wrong instance/test path before any upstream request', async () => {
+  for (const endpoint of [
+    'https://example.n8n.cloud/webhook/svoe-website-context-v1',
+    'https://svoyechat.app.n8n.cloud/webhook-test/svoe-website-context-v1',
+    'https://svoyechat.app.n8n.cloud/webhook/svoe-website-context-v1?private=fake',
+  ]) {
+    const r = route({ ...env(), SVOYE_HANDOFF_WEBHOOK_URL: endpoint });
+    const response = await r.POST(request());
+    assert.equal(response.status, 503); assert.equal(response.body.diagnostic, 'CANARY_WRONG_WEBHOOK_ENDPOINT');
+    assert.equal(r.calls.length, 0);
+  }
+});
+
+test('canary distinguishes upstream HTTP, transport, invalid JSON and missing ack without echoing details', async () => {
+  const cases = [
+    ...[403, 404, 500, 503].map(status => [async () => ({ ok: false, status, json: async () => ({ private: 'DO_NOT_ECHO' }) }), 'UPSTREAM_HTTP_' + status]),
+    [async () => { throw Error('DO_NOT_ECHO Authorization fake'); }, 'UPSTREAM_TRANSPORT'],
+    [async () => ({ ok: true, json: async () => { throw Error('DO_NOT_ECHO'); } }), 'UPSTREAM_INVALID_JSON'],
+    [async () => ({ ok: true, json: async () => ({ stored: false, private: 'DO_NOT_ECHO' }) }), 'UPSTREAM_STORAGE_NOT_CONFIRMED'],
+  ];
+  for (const [responder, expected] of cases) {
+    const r = route(env(), responder), result = await r.POST(request());
+    assert.equal(result.status, 502); assert.equal(result.body.diagnostic, expected);
+    assert.equal(JSON.stringify(result.body).includes('DO_NOT_ECHO'), false);
+    assert.equal(JSON.stringify(result.body).includes('fake-local-only'), false);
+    assert.equal(r.calls.length, 1);
+  }
+  const normal = route({ ...env(), SVOYE_HANDOFF_BOT_READY: 'true' }, async () => ({ ok: false, status: 403 }));
+  const result = await normal.POST(request(CANARY_SUMMARY, new URL('https://svoe.live/api/website-handoff')));
+  assert.equal(result.status, 502); assert.equal('diagnostic' in result.body, false);
+});
+
+test('form displays only allowlisted diagnostic codes and makes no retry', async () => {
+  const html = renderCanaryPage('testnonce'), script = html.split('<script nonce="testnonce">')[1].split('</script>')[0];
+  for (const code of ['UPSTREAM_HTTP_403', 'DO_NOT_ECHO']) {
+    let calls = 0;
+    const elements = form(script, async () => { calls++; return { ok: false, json: async () => ({ diagnostic: code }) }; });
+    await elements.check.submit({ preventDefault() {} }); await elements.check.submit({ preventDefault() {} });
+    assert.equal(calls, 1); assert.equal(elements.telegram.hidden, true);
+    assert.equal(elements.status.textContent.includes(code === 'DO_NOT_ECHO' ? 'UNKNOWN' : code), true);
+    assert.equal(elements.status.textContent.includes('DO_NOT_ECHO'), false);
   }
 });

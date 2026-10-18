@@ -97,13 +97,19 @@ export async function POST(request: NextRequest) {
     if (target.protocol !== "https:" || !target.hostname.endsWith(".n8n.cloud")) {
       throw new Error("unexpected destination");
     }
+    if (canary && (target.origin !== "https://svoyechat.app.n8n.cloud" ||
+        target.pathname !== "/webhook/svoe-website-context-v1" || target.search || target.hash ||
+        target.username || target.password)) throw new Error("unexpected canary destination");
   } catch {
-    return NextResponse.json({ error: "Сервіс передачі ще не налаштований." }, { status: 503, headers: noStore });
+    return NextResponse.json({ error: "Сервіс передачі ще не налаштований.",
+      ...(canary ? { diagnostic: "CANARY_WRONG_WEBHOOK_ENDPOINT" } : {}),
+    }, { status: 503, headers: noStore });
   }
 
   const token = randomBytes(32).toString("base64url");
   const tokenHash = createHash("sha256").update(token, "utf8").digest("hex");
   const expiresAt = new Date(Date.now() + TOKEN_TTL_MS).toISOString();
+  let diagnostic = "UPSTREAM_TRANSPORT";
   try {
     const response = await fetch(target, {
       method: "POST",
@@ -122,15 +128,22 @@ export async function POST(request: NextRequest) {
       redirect: "error", // Never forward a consented summary to a redirect target.
       signal: AbortSignal.timeout(8000),
     });
-    if (!response.ok) throw new Error("handoff persistence failed");
+    if (!response.ok) {
+      diagnostic = `UPSTREAM_HTTP_${response.status}`;
+      throw new Error("handoff persistence failed");
+    }
+    diagnostic = "UPSTREAM_INVALID_JSON";
     const result: unknown = await response.json();
+    diagnostic = "UPSTREAM_STORAGE_NOT_CONFIRMED";
     if (!result || typeof result !== "object" ||
         (result as Record<string, unknown>).stored !== true) {
       throw new Error("missing persistence acknowledgement");
     }
   } catch {
     return NextResponse.json(
-      { error: "Не вдалося підготувати передачу. Спробуй ще раз або скопіюй текст." },
+      { error: "Не вдалося підготувати передачу. Спробуй ще раз або скопіюй текст.",
+        ...(canary ? { diagnostic } : {}),
+      },
       { status: 502, headers: noStore },
     );
   }

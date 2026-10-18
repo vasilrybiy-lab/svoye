@@ -53,7 +53,11 @@ form.addEventListener('submit',async event=>{
  try{
   const response=await fetch(location.pathname+location.search,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({consent:true,contextVersion:1,messageText:${JSON.stringify(CANARY_SUMMARY)}}),cache:'no-store',redirect:'error'});
   const result=await response.json();
-  if(!response.ok||typeof result.telegramUrl!=='string')throw Error('handoff');
+  if(!response.ok){
+   const code=typeof result.diagnostic==='string'&&(/^UPSTREAM_HTTP_[1-5][0-9]{2}$/.test(result.diagnostic)||['CANARY_WRONG_WEBHOOK_ENDPOINT','UPSTREAM_TRANSPORT','UPSTREAM_INVALID_JSON','UPSTREAM_STORAGE_NOT_CONFIRMED'].includes(result.diagnostic))?result.diagnostic:'UNKNOWN';
+   status.textContent='Передачу не підтверджено. Код перевірки: '+code+'. Зупини тест; не повторюй запит.';return;
+  }
+  if(typeof result.telegramUrl!=='string')throw Error('handoff');
   const target=new URL(result.telegramUrl);
   if(target.origin!=='https://t.me'||target.username||target.password||target.pathname!=='/svoe_live_bot'||target.hash||target.searchParams.size!==1||!/^sv_[A-Za-z0-9_-]{43}$/.test(target.searchParams.get('start')||''))throw Error('handoff');
   link.href=result.telegramUrl;link.hidden=false;status.textContent='Тестовий підсумок збережено. Відкрий Telegram та натисни Start.';
