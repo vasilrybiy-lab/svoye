@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { svoyeTelegramBotUsername, svoyeTelegramLink } from "@/lib/telegram-links";
 import {
   ArrowLeft, ArrowRight, Check, ChevronRight, ClipboardCopy,
@@ -103,6 +103,7 @@ export default function MobileJourneyHome() {
   const [handoffBusy, setHandoffBusy] = useState(false);
   const [handoffUrl, setHandoffUrl] = useState("");
   const [handoffError, setHandoffError] = useState("");
+  const handoffRequest = useRef<AbortController | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -110,10 +111,19 @@ export default function MobileJourneyHome() {
       .then(async response => response.ok ? (await response.json() as { enabled?: boolean }) : { enabled: false })
       .then(data => { if (live) setHandoffAvailable(data?.enabled === true); })
       .catch(() => { if (live) setHandoffAvailable(false); });
-    return () => { live = false; };
+    return () => {
+      live = false;
+      handoffRequest.current?.abort();
+      handoffRequest.current = null;
+    };
   }, []);
 
   function resetHandoff() {
+    // Invalidate before aborting: a completed response may already be queued.
+    const pending = handoffRequest.current;
+    handoffRequest.current = null;
+    pending?.abort();
+    setHandoffBusy(false);
     setHandoffUrl("");
     setHandoffConsent(false);
     setHandoffError("");
@@ -152,7 +162,9 @@ export default function MobileJourneyHome() {
     "Одна проба не визначає професію чи здібності; це спостереження для наступного кроку.",
   ].join("\n");
   async function prepareTelegramHandoff() {
-    if (!handoffAvailable || !handoffConsent || handoffBusy) return;
+    if (!handoffAvailable || !handoffConsent || handoffBusy || handoffRequest.current) return;
+    const request = new AbortController();
+    handoffRequest.current = request;
     setHandoffBusy(true);
     setHandoffError("");
     setHandoffUrl("");
@@ -161,17 +173,24 @@ export default function MobileJourneyHome() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ consent: true, contextVersion: 1, messageText: summary }),
+        signal: request.signal,
       });
       const data: { telegramUrl?: string; error?: string } = await response.json();
+      if (handoffRequest.current !== request) return;
       if (!response.ok || typeof data.telegramUrl !== "string" ||
           !new RegExp('^https://t[.]me/' + svoyeTelegramBotUsername + '[?]start=sv_[A-Za-z0-9_-]{43}$').test(data.telegramUrl)) {
         throw new Error(data.error || "Неможливо підготувати посилання.");
       }
       setHandoffUrl(data.telegramUrl);
     } catch (error) {
-      setHandoffError(error instanceof Error ? error.message : "Спробуй ще раз або скопіюй підсумок.");
+      if (handoffRequest.current === request) {
+        setHandoffError(error instanceof Error ? error.message : "Спробуй ще раз або скопіюй підсумок.");
+      }
     } finally {
-      setHandoffBusy(false);
+      if (handoffRequest.current === request) {
+        handoffRequest.current = null;
+        setHandoffBusy(false);
+      }
     }
   }
 
@@ -265,7 +284,7 @@ export default function MobileJourneyHome() {
             <h1>{stage === "interest" ? <>Що тебе <em>зачепило?</em></> : stage === "difficulty" ? <>Як було зі <em>складнощами?</em></> : <>Що хочеться <em>далі?</em></>}</h1>
             <p>{stage === "interest" ? "Які дії викликали цікавість у цій конкретній пробі?" : stage === "difficulty" ? "Оціни власну реакцію, а не правильність виконання." : "Що ти хочеш дослідити після цього досвіду?"}</p>
           </div>
-          {stage === "difficulty" && <label className="v2-nodiff"><input type="checkbox" checked={noDifficulty} onChange={e => setNoDifficulty(e.target.checked)}/> Складнощів не було</label>}
+          {stage === "difficulty" && <label className="v2-nodiff"><input type="checkbox" checked={noDifficulty} onChange={e => { setNoDifficulty(e.target.checked); resetHandoff(); }}/> Складнощів не було</label>}
           <div className="v2-reflection">
             {stage === "difficulty" && noDifficulty ? <div className="v2-card"><p>Тоді цей блок можна пропустити. Це теж важливе спостереження.</p></div> :
               activeCriteria.map(c => <RatingScale key={c.id} item={c} value={answers[c.id]} onChange={value => setAnswer(c.id, value)} />)}
@@ -298,7 +317,10 @@ export default function MobileJourneyHome() {
             </details>
             {handoffAvailable ? <>
               <label className="v2-consent">
-                <input type="checkbox" checked={handoffConsent} onChange={event => { setHandoffConsent(event.target.checked); setHandoffError(""); }} />
+                <input type="checkbox" checked={handoffConsent} onChange={event => {
+                  if (!event.target.checked) resetHandoff();
+                  else { setHandoffConsent(true); setHandoffError(""); }
+                }} />
                 <span>Я погоджуюся передати цей підсумок, зокрема мої нотатки, боту «Своє» для продовження розмови. Код передачі діятиме 10 хвилин і спрацює один раз.</span>
               </label>
               {!handoffUrl ? <button className="v2-button dark" type="button"
