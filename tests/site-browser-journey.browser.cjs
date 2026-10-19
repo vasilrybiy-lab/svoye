@@ -109,7 +109,7 @@ test('390px mobile: teen → actual micro-trial → reflection → summary → m
       'https://t.me/svoe_live_bot?start=site_trial');
     assert.equal(await page.locator('.v2-consent').count(), 0);
     await page.locator('.v2-handoff-preview summary').click();
-    const summary = await page.locator('.v2-handoff-preview-text').innerText();
+    const summary = await page.locator('.v2-handoff-preview-text').textContent();
     assert.match(summary, /QA: вигадана ідея — дослідити світло/);
     assert.match(summary, /Одна проба не визначає професію/);
     await page.locator('.v2-copy-button').click();
@@ -210,4 +210,116 @@ test('automated WCAG 2.1 AA serious/critical checks on teen, parent and trial sc
   } finally {
     await context.close();
   }
+});
+
+
+// Regression coverage for the existing consent UI. All POSTs below are replaced
+// in the page with deferred synthetic responses; they never reach the server.
+// Deliberately ignore AbortSignal in this fake transport to exercise stale-response
+// guards even when a response was already queued before cancellation.
+async function handoffPage() {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await page.addInitScript(() => {
+    const originalFetch = window.fetch.bind(window);
+    window.__handoffQA = { requests: [], aborted: [] };
+    window.fetch = (input, init = {}) => {
+      const url = new URL(typeof input === 'string' ? input : input.url, location.href);
+      if (url.origin === location.origin && url.pathname === '/api/website-handoff') {
+        if ((init.method || 'GET') === 'GET') {
+          return Promise.resolve(new Response(JSON.stringify({ enabled: true }), { status: 200 }));
+        }
+        if (init.method === 'POST') {
+          return new Promise(resolve => {
+            const index = window.__handoffQA.requests.length;
+            window.__handoffQA.requests.push({
+              body: JSON.parse(init.body),
+              finish: (body, status = 200) => resolve(new Response(JSON.stringify(body), { status })),
+            });
+            init.signal?.addEventListener('abort', () => { window.__handoffQA.aborted.push(index); });
+          });
+        }
+      }
+      return originalFetch(input, init);
+    };
+  });
+  await page.goto(origin + '/', { waitUntil: 'networkidle' });
+  await page.locator('.v2-direction-list button').first().click();
+  await page.locator('#v2-notes').fill('QA: вигаданий підсумок без персональних даних');
+  await page.getByRole('button', { name: /Перейти до рефлексії/ }).click();
+  for (let n = 0; n < 3; n++) await page.locator('.v2-skip').nth(n).click();
+  await page.getByRole('button', { name: /^Далі/ }).click();
+  for (let n = 0; n < 3; n++) await page.locator('.v2-skip').nth(n).click();
+  await page.getByRole('button', { name: /^Далі/ }).click();
+  for (let n = 0; n < 2; n++) await page.locator('.v2-skip').nth(n).click();
+  await page.getByRole('button', { name: /Побачити підсумок/ }).click();
+  return { context, page };
+}
+async function changeDifficultySummary(page) {
+  await page.getByRole('button', { name: /Назад/ }).click();
+  await page.getByRole('button', { name: /Назад/ }).click();
+  await page.getByLabel('Складнощів не було').check();
+  await page.getByRole('button', { name: /^Далі/ }).click();
+  await page.getByRole('button', { name: /Побачити підсумок/ }).click();
+}
+async function startSyntheticHandoff(page, count) {
+  await page.locator('.v2-consent input').check();
+  await page.getByRole('button', { name: /Підготувати перехід у Telegram/ }).click();
+  await page.waitForFunction(expected => window.__handoffQA.requests.length === expected, count);
+}
+async function finishSyntheticHandoff(page, index, token, status = 200) {
+  await page.evaluate(({ index, token, status }) => {
+    window.__handoffQA.requests[index].finish(status === 200
+      ? { telegramUrl: 'https://t.me/svoe_live_bot?start=sv_' + token }
+      : { error: 'QA: застаріла помилка' }, status);
+  }, { index, token, status });
+  // Flush the response and React updates without waiting on an arbitrary timer.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+test('handoff: changing difficulty resets consent and a prepared link', { skip: Boolean(liveOrigin) }, async () => {
+  const { context, page } = await handoffPage();
+  try {
+    assert.equal(await page.locator('.v2-consent input').isChecked(), false);
+    await startSyntheticHandoff(page, 1);
+    await finishSyntheticHandoff(page, 0, 'A'.repeat(43));
+    await page.waitForSelector('.v2-handoff-success a');
+    const before = await page.evaluate(() => window.__handoffQA.requests[0].body.messageText);
+    await changeDifficultySummary(page);
+    assert.notEqual(await page.locator('.v2-handoff-preview-text').textContent(), before);
+    assert.equal(await page.locator('.v2-consent input').isChecked(), false);
+    assert.equal(await page.locator('.v2-handoff-success').count(), 0);
+    assert.equal(await page.getByRole('button', { name: /Підготувати перехід у Telegram/ }).isDisabled(), true);
+    assert.equal(await page.evaluate(() => window.__handoffQA.requests.length), 1);
+  } finally { await context.close(); }
+});
+
+test('handoff: a stale success or error cannot replace a newer request', { skip: Boolean(liveOrigin) }, async t => {
+  for (const staleStatus of [200, 502]) await t.test('old response status ' + staleStatus, async () => {
+    const { context, page } = await handoffPage();
+    try {
+      await startSyntheticHandoff(page, 1);
+      await changeDifficultySummary(page);
+      assert.deepEqual(await page.evaluate(() => window.__handoffQA.aborted), [0]);
+      assert.equal(await page.locator('.v2-consent input').isChecked(), false);
+      await startSyntheticHandoff(page, 2);
+      const bodies = await page.evaluate(() => window.__handoffQA.requests.map(r => r.body));
+      assert.notEqual(bodies[0].messageText, bodies[1].messageText);
+      assert.equal(bodies[1].consent, true);
+      assert.equal(bodies[1].messageText, await page.locator('.v2-handoff-preview-text').textContent());
+      await finishSyntheticHandoff(page, 0, 'A'.repeat(43), staleStatus);
+      assert.equal(await page.locator('.v2-handoff-success').count(), 0);
+      assert.equal(await page.locator('.v2-handoff-error').count(), 0);
+      assert.equal(await page.getByRole('button', { name: /Готуємо перехід/ }).isDisabled(), true,
+        'An old finally block must not release the newer request');
+      await finishSyntheticHandoff(page, 1, 'B'.repeat(43));
+      await page.waitForSelector('.v2-handoff-success a');
+      assert.equal(await page.locator('.v2-handoff-success a').getAttribute('href'),
+        'https://t.me/svoe_live_bot?start=sv_' + 'B'.repeat(43));
+      await page.locator('.v2-consent input').uncheck();
+      assert.equal(await page.locator('.v2-handoff-success').count(), 0);
+      assert.equal(await page.getByRole('button', { name: /Підготувати перехід у Telegram/ }).isDisabled(), true);
+      assert.equal(await page.evaluate(() => window.__handoffQA.requests.length), 2);
+    } finally { await context.close(); }
+  });
 });
