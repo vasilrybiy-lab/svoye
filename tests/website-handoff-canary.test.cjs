@@ -28,7 +28,11 @@ function route(config = env(), responder = async () => ({ ok: true, json: async 
   }
   const mockRequire = name => name === 'next/server' ? { NextResponse: Response }
     : name === '@/lib/telegram-links' ? { svoyeTelegramBotUsername: 'svoe_live_bot' }
-    : name === '@/lib/website-handoff-canary' ? helper : require(name);
+    : name === '@/lib/website-handoff-canary' ? helper
+    : name === '@/lib/website-admission' ? {
+      isAdmissionConfigured: () => true,
+      reserveWebsiteAdmission: async () => ({ allowed:true, httpStatus:200 }),
+    } : require(name);
   const module = { exports: {} };
   new Function('require', 'module', 'exports', 'process', 'fetch', 'AbortSignal', code)(
     mockRequire, module, module.exports, { env: config }, async (...args) => { calls.push(args); return responder(...args); }, AbortSignal,
@@ -165,3 +169,4 @@ test('form displays only allowlisted diagnostic codes and makes no retry', async
     assert.equal(elements.status.textContent.includes('DO_NOT_ECHO'), false);
   }
 });
+
