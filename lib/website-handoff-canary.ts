@@ -4,6 +4,92 @@ export const CANARY_SUMMARY = "SVOE SYNTHETIC CANARY v1. Тестовий під
 export const CANARY_BRANCH = "feature/v2-svoe-live-telegram-2026-10-16";
 const MAX_WINDOW_MS = 5 * 60 * 1000;
 
+// Synthetic-only hints about the returned error envelope, never a root-cause claim.
+export const CANARY_FAILURE_CODES = [
+  "WORKFLOW_START_FAILED", "WORKFLOW_CONFIGURATION", "WORKFLOW_ISSUES",
+  "WORKFLOW_EXECUTION_FAILED", "WORKFLOW_RESPONSE_TIMEOUT", "WORKFLOW_CANCELLED",
+  "UNKNOWN_UPSTREAM_ERROR", "DIAGNOSTIC_UNAVAILABLE", "DIAGNOSTIC_TOO_LARGE",
+  "DIAGNOSTIC_NOT_JSON", "DIAGNOSTIC_TIMEOUT",
+] as const;
+export const CANARY_FAILURE_NODES = ["VALIDATE", "STORE", "DISPATCH", "ACK"] as const;
+type CanaryFailure = { code: typeof CANARY_FAILURE_CODES[number]; node?: typeof CANARY_FAILURE_NODES[number] };
+const NODE_ALIASES: Record<string, typeof CANARY_FAILURE_NODES[number]> = {
+  "SVOE LIVE — Validate website handoff payload": "VALIDATE",
+  "SVOE LIVE — Store one-time website context (Neon TEST)": "STORE",
+  "SVOE LIVE — Dispatch metadata-only expiry (DRAFT / TEST)": "DISPATCH",
+  "SVOE LIVE — Website respond 200 stored": "ACK",
+};
+const ERROR_MESSAGES: Record<string, CanaryFailure["code"]> = {
+  "Workflow Webhook Error: Workflow could not be started!": "WORKFLOW_START_FAILED",
+  "The workflow has issues and cannot be executed for that reason. Please fix them first.": "WORKFLOW_ISSUES",
+  "There was a problem executing the workflow": "WORKFLOW_EXECUTION_FAILED",
+  "The workflow did not answer in time": "WORKFLOW_RESPONSE_TIMEOUT",
+  "The execution was cancelled": "WORKFLOW_CANCELLED",
+};
+const record = (v: unknown): Record<string, unknown> => v && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : {};
+const ownValue = <T>(map: Record<string, T>, key: unknown): T | undefined =>
+  typeof key === "string" && Object.hasOwn(map, key) ? map[key] : undefined;
+
+export function classifyCanaryUpstreamFailure(value: unknown): CanaryFailure {
+  const root = record(value), error = record(root.error), candidates = [root, error];
+  let code: CanaryFailure["code"] = "UNKNOWN_UPSTREAM_ERROR";
+  for (const candidate of candidates) {
+    if (candidate.name === "WorkflowConfigurationError") { code = "WORKFLOW_CONFIGURATION"; break; }
+    if (candidate.name === "WorkflowHasIssuesError") { code = "WORKFLOW_ISSUES"; break; }
+    const known = ownValue(ERROR_MESSAGES, candidate.message);
+    if (known) { code = known; break; }
+  }
+  // No arbitrary error messages, fields, SQL, stack, IDs or headers leave this function.
+  for (const candidate of candidates) {
+    const name = typeof candidate.node === "string" ? candidate.node : record(candidate.node).name;
+    const node = ownValue(NODE_ALIASES, name) ?? ownValue(NODE_ALIASES, candidate.nodeName);
+    if (node) return { code, node };
+  }
+  return { code };
+}
+
+export async function readCanaryUpstreamFailure(response: Response, budgetMs = 250): Promise<CanaryFailure> {
+  const maximum = 4096;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    if (response.headers?.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json")
+      return { code: "DIAGNOSTIC_NOT_JSON" };
+    reader = response.body?.getReader();
+    if (!reader) return { code: "DIAGNOSTIC_UNAVAILABLE" };
+    const size = Number(response.headers.get("content-length"));
+    if (Number.isFinite(size) && size > maximum) return { code: "DIAGNOSTIC_TOO_LARGE" };
+    const deadline = new Promise<CanaryFailure>(resolve => {
+      const budget = Number.isFinite(budgetMs) ? Math.min(250, Math.max(1, budgetMs)) : 250;
+      timer = setTimeout(() => resolve({ code: "DIAGNOSTIC_TIMEOUT" }), budget);
+    });
+    const read = async (): Promise<CanaryFailure> => {
+      const chunks: Uint8Array[] = []; let total = 0;
+      for (let reads = 0; reads < 32; reads++) {
+        const part = await reader!.read();
+        if (part.done) {
+          const bytes = new Uint8Array(total); let offset = 0;
+          for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+          try { return classifyCanaryUpstreamFailure(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes))); }
+          catch { return { code: "DIAGNOSTIC_NOT_JSON" }; }
+        }
+        if (!(part.value instanceof Uint8Array)) return { code: "DIAGNOSTIC_UNAVAILABLE" };
+        total += part.value.byteLength;
+        if (total > maximum) return { code: "DIAGNOSTIC_TOO_LARGE" };
+        chunks.push(part.value.slice());
+      }
+      return { code: "DIAGNOSTIC_UNAVAILABLE" };
+    };
+    return await Promise.race([read(), deadline]);
+  } catch { return { code: "DIAGNOSTIC_UNAVAILABLE" }; }
+  finally {
+    if (timer !== undefined) clearTimeout(timer);
+    try { void reader?.cancel().catch(() => {}); } catch {}
+    if (!reader) { try { void response.body?.cancel().catch(() => {}); } catch {} }
+    try { reader?.releaseLock(); } catch {}
+  }
+}
+
 type CanaryUrl = {
   protocol?: string;
   hostname?: string;
@@ -55,7 +141,10 @@ form.addEventListener('submit',async event=>{
   const result=await response.json();
   if(!response.ok){
    const code=typeof result.diagnostic==='string'&&(/^UPSTREAM_HTTP_[1-5][0-9]{2}$/.test(result.diagnostic)||['CANARY_WRONG_WEBHOOK_ENDPOINT','UPSTREAM_TRANSPORT','UPSTREAM_INVALID_JSON','UPSTREAM_STORAGE_NOT_CONFIRMED'].includes(result.diagnostic))?result.diagnostic:'UNKNOWN';
-   status.textContent='Передачу не підтверджено. Код перевірки: '+code+'. Зупини тест; не повторюй запит.';return;
+   const failure=result.upstreamFailure;
+   const hint=failure&&${JSON.stringify(CANARY_FAILURE_CODES)}.includes(failure.code)?failure.code:'';
+   const node=hint&&${JSON.stringify(CANARY_FAILURE_NODES)}.includes(failure.node)?failure.node:'';
+   status.textContent='Передачу не підтверджено. Код перевірки: '+code+(hint?' / '+hint:'')+(node?' / '+node:'')+'. Зупини тест; не повторюй запит.';return;
   }
   if(typeof result.telegramUrl!=='string')throw Error('handoff');
   const target=new URL(result.telegramUrl);
@@ -64,3 +153,4 @@ form.addEventListener('submit',async event=>{
  }catch{status.textContent='Передачу не підтверджено. Зупини тест і перевір результат; не повторюй запит.';}
 });</script></body></html>`;
 }
+
