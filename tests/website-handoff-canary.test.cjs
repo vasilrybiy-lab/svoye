@@ -170,3 +170,73 @@ test('form displays only allowlisted diagnostic codes and makes no retry', async
   }
 });
 
+test('canary classifies a bounded native error response and returns only fixed code/node aliases', async () => {
+  const marker = 'PRIVATE_HEADER_TOKEN_SQL_TEXT_DO_NOT_ECHO';
+  const native = {
+    message: 'Workflow Webhook Error: Workflow could not be started!',
+    node: { name: 'SVOE LIVE — Store one-time website context (Neon TEST)', credential: marker },
+    stack: marker, headers: { Authorization: marker }, input: { message_text: marker, token_hash: marker },
+  };
+  const r = route(env(), async () => new globalThis.Response(JSON.stringify(native), { status:500, headers:{'content-type':'application/json'} }));
+  const result = await r.POST(request());
+  assert.equal(result.status,502); assert.equal(result.body.diagnostic,'UPSTREAM_HTTP_500');
+  assert.deepEqual(result.body.upstreamFailure,{code:'WORKFLOW_START_FAILED',node:'STORE'});
+  assert.equal(JSON.stringify(result.body).includes(marker),false); assert.equal(r.calls.length,1);
+  for(const value of [
+    {message:'Workflow Webhook Error: Workflow could not be started! '+marker,node:marker},
+    {message:'toString',node:'constructor'}, {name:'__proto__',nodeName:'__proto__'}, [], null,
+  ]) assert.deepEqual(helper.classifyCanaryUpstreamFailure(value),{code:'UNKNOWN_UPSTREAM_ERROR'});
+  assert.deepEqual(helper.classifyCanaryUpstreamFailure({error:{name:'WorkflowHasIssuesError',nodeName:'SVOE LIVE — Validate website handoff payload',stack:marker}}),
+    {code:'WORKFLOW_ISSUES',node:'VALIDATE'});
+});
+
+test('diagnostic stream rejects malformed, oversized and excessive chunks and cancels promptly', async () => {
+  const read = helper.readCanaryUpstreamFailure;
+  const upstream = (body,headers={}) => new globalThis.Response(body,{status:500,headers:{'content-type':'application/json',...headers}});
+  assert.deepEqual(await read(upstream('{broken PRIVATE_MARKER')),{code:'DIAGNOSTIC_NOT_JSON'});
+  assert.deepEqual(await read(upstream('PRIVATE_MARKER',{'content-type':'text/html'})),{code:'DIAGNOSTIC_NOT_JSON'});
+  assert.deepEqual(await read(upstream('x'.repeat(4097))),{code:'DIAGNOSTIC_TOO_LARGE'});
+  assert.deepEqual(await read(upstream('{}',{'content-length':'4097'})),{code:'DIAGNOSTIC_TOO_LARGE'});
+  let cancelled=0;
+  const many=new ReadableStream({pull(controller){controller.enqueue(new Uint8Array(0));},cancel(){cancelled++;}});
+  assert.deepEqual(await read(upstream(many)),{code:'DIAGNOSTIC_UNAVAILABLE'});assert.equal(cancelled,1);
+  const invalidUTF8=new Uint8Array([0xff,0xff]);
+  assert.deepEqual(await read(upstream(invalidUTF8)),{code:'DIAGNOSTIC_NOT_JSON'});
+});
+
+test('diagnostic read has one total time budget and cannot stall an HTTP failure', async () => {
+  let cancelled=0;
+  const hanging=new ReadableStream({start(){},cancel(){cancelled++;}});
+  const response=new globalThis.Response(hanging,{status:500,headers:{'content-type':'application/json'}});
+  assert.deepEqual(await helper.readCanaryUpstreamFailure(response,20),{code:'DIAGNOSTIC_TIMEOUT'});
+  assert.equal(cancelled,1);
+});
+
+test('normal errors and successful canaries never enter the diagnostic body reader', async () => {
+  let reads=0;
+  const body={getReader(){reads++;throw Error('PRIVATE');},cancel:async()=>{}};
+  const normal=route({...env(),SVOYE_HANDOFF_BOT_READY:'true'},async()=>({ok:false,status:500,body}));
+  const failed=await normal.POST(request(CANARY_SUMMARY,new URL('https://svoe.live/api/website-handoff')));
+  assert.equal(failed.status,502);assert.equal('upstreamFailure' in failed.body,false);assert.equal('diagnostic' in failed.body,false);
+  const success=route(env(),async()=>({ok:true,body,json:async()=>({stored:true})}));
+  assert.equal((await success.POST(request())).status,200);assert.equal(reads,0);
+  assert.equal(normal.calls.length,1);assert.equal(success.calls.length,1);
+});
+
+test('form displays only fixed failure and node aliases, never nested upstream content or a retry', async () => {
+  const html=renderCanaryPage('testnonce'),script=html.split('<script nonce="testnonce">')[1].split('</script>')[0];
+  for(const failure of [
+    {code:'WORKFLOW_START_FAILED',node:'STORE',message:'DO_NOT_ECHO'},
+    {code:'DO_NOT_ECHO',node:'STORE'},
+    {code:'WORKFLOW_ISSUES',node:'DO_NOT_ECHO'},
+  ]){
+    let calls=0;
+    const elements=form(script,async()=>{calls++;return {ok:false,json:async()=>({diagnostic:'UPSTREAM_HTTP_500',upstreamFailure:failure})};});
+    await elements.check.submit({preventDefault(){}});await elements.check.submit({preventDefault(){}});
+    assert.equal(calls,1);assert.equal(elements.telegram.hidden,true);
+    assert.equal(elements.status.textContent.includes('DO_NOT_ECHO'),false);
+    assert.equal(elements.status.textContent.includes('UPSTREAM_HTTP_500'),true);
+    if(failure.code==='WORKFLOW_START_FAILED')assert.ok(elements.status.textContent.includes('WORKFLOW_START_FAILED / STORE'));
+  }
+});
+

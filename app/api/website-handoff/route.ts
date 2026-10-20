@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { svoyeTelegramBotUsername } from "@/lib/telegram-links";
-import { CANARY_SUMMARY, isCanaryRequest, renderCanaryPage } from "@/lib/website-handoff-canary";
+import { CANARY_SUMMARY, isCanaryRequest, renderCanaryPage, readCanaryUpstreamFailure } from "@/lib/website-handoff-canary";
 import { isAdmissionConfigured, reserveWebsiteAdmission } from "@/lib/website-admission";
 
 export const runtime = "nodejs";
@@ -124,6 +124,7 @@ export async function POST(request: NextRequest) {
   const tokenHash = createHash("sha256").update(token, "utf8").digest("hex");
   const expiresAt = new Date(Date.now() + TOKEN_TTL_MS).toISOString();
   let diagnostic = "UPSTREAM_TRANSPORT";
+  let upstreamFailure: Awaited<ReturnType<typeof readCanaryUpstreamFailure>> | undefined;
   try {
     const response = await fetch(target, {
       method: "POST",
@@ -144,6 +145,7 @@ export async function POST(request: NextRequest) {
     });
     if (!response.ok) {
       diagnostic = `UPSTREAM_HTTP_${response.status}`;
+      if (canary) upstreamFailure = await readCanaryUpstreamFailure(response);
       throw new Error("handoff persistence failed");
     }
     diagnostic = "UPSTREAM_INVALID_JSON";
@@ -156,7 +158,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json(
       { error: "Передачу не підтверджено. Не повторюй запит; скопіюй текст для ручного продовження.",
-        ...(canary ? { diagnostic } : {}),
+        ...(canary ? { diagnostic, ...(upstreamFailure ? { upstreamFailure } : {}) } : {}),
       },
       { status: 502, headers: noStore },
     );
