@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { svoyeTelegramBotUsername } from "@/lib/telegram-links";
 import { CANARY_SUMMARY, isCanaryRequest, renderCanaryPage } from "@/lib/website-handoff-canary";
+import { isAdmissionConfigured, reserveWebsiteAdmission } from "@/lib/website-admission";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,12 +14,13 @@ const TOKEN_TTL_MS = 10 * 60 * 1000;
 const isReady = () =>
   process.env.SVOYE_HANDOFF_BOT_READY === "true" &&
   Boolean(process.env.SVOYE_HANDOFF_WEBHOOK_URL) &&
-  Boolean(process.env.SVOYE_HANDOFF_WEBHOOK_SECRET);
+  Boolean(process.env.SVOYE_HANDOFF_WEBHOOK_SECRET) &&
+  isAdmissionConfigured();
 
 const noStore = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 
 export async function GET(request?: NextRequest) {
-  if (isCanaryRequest(request?.nextUrl, process.env)) {
+  if (isCanaryRequest(request?.nextUrl, process.env) && isAdmissionConfigured()) {
     const nonce = randomBytes(18).toString("base64");
     return new NextResponse(renderCanaryPage(nonce), { headers: {
       ...noStore,
@@ -45,7 +47,7 @@ export async function GET(request?: NextRequest) {
 export async function POST(request: NextRequest) {
   const requestedCanary = request.nextUrl.searchParams?.has("canary") ?? false;
   const canary = isCanaryRequest(request.nextUrl, process.env);
-  if (requestedCanary ? !canary : !isReady()) {
+  if ((requestedCanary ? !canary : !isReady()) || !isAdmissionConfigured()) {
     return NextResponse.json(
       { error: "Підключення Telegram ще готується. Скопіюй підсумок вручну." },
       { status: 503, headers: noStore },
@@ -106,6 +108,18 @@ export async function POST(request: NextRequest) {
     }, { status: 503, headers: noStore });
   }
 
+  // Common to normal, alias and canary paths; only after validation and before
+  // any n8n call. A failed/unknown upstream attempt still consumes its allowance.
+  const admission = await reserveWebsiteAdmission();
+  if (!admission.allowed) {
+    return NextResponse.json(
+      { error: admission.httpStatus === 429
+        ? "Доступний ліміт звернень вичерпано. Скопіюй підсумок для ручного продовження."
+        : "Передача тимчасово недоступна. Скопіюй підсумок для ручного продовження." },
+      { status: admission.httpStatus, headers: noStore },
+    );
+  }
+
   const token = randomBytes(32).toString("base64url");
   const tokenHash = createHash("sha256").update(token, "utf8").digest("hex");
   const expiresAt = new Date(Date.now() + TOKEN_TTL_MS).toISOString();
@@ -141,7 +155,7 @@ export async function POST(request: NextRequest) {
     }
   } catch {
     return NextResponse.json(
-      { error: "Не вдалося підготувати передачу. Спробуй ще раз або скопіюй текст.",
+      { error: "Передачу не підтверджено. Не повторюй запит; скопіюй текст для ручного продовження.",
         ...(canary ? { diagnostic } : {}),
       },
       { status: 502, headers: noStore },
@@ -153,4 +167,5 @@ export async function POST(request: NextRequest) {
     expiresInSeconds: TOKEN_TTL_MS / 1000,
   }, { headers: noStore });
 }
+
 
