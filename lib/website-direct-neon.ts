@@ -37,7 +37,7 @@ async function queueAck(response: Response): Promise<Record<string, unknown>> {
     throw Error("EXPIRY_QUEUE_UNCONFIRMED");
   } finally { await reader.cancel().catch(() => {}); }
 }
-export async function prepareDirectWebsite(messageText: string, mode: "synthetic" | "normal") {
+export async function prepareDirectWebsite(messageText: string, mode: "synthetic" | "normal" | "pilot") {
   const fail = (status = 502) => ({status, body:{error:"Передачу не підтверджено. Не повторюй запит; скопіюй підсумок для ручного продовження."}});
   if (!isDirectNeonConfigured() || !messageText.trim() || messageText.length > 4000 || Buffer.byteLength(messageText,"utf8") > 8000) return fail(503);
   const token = randomBytes(32).toString("base64url");

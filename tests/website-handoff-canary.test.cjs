@@ -30,6 +30,7 @@ function route(config = env(), responder = async () => ({ ok: true, json: async 
     : name === '@/lib/website-direct-neon' ? { isDirectNeonConfigured:()=>false,prepareDirectWebsite:async()=>{throw Error('Unexpected direct route');} }
     : name === '@/lib/telegram-links' ? { svoyeTelegramBotUsername: 'svoe_live_bot' }
     : name === '@/lib/website-handoff-canary' ? helper
+    : name === '@/lib/website-handoff-pilot' ? require('../lib/website-handoff-pilot.ts')
     : name === '@/lib/website-admission' ? {
       isAdmissionConfigured: () => true,
       reserveWebsiteAdmission: async () => ({ allowed:true, httpStatus:200 }),

@@ -26,6 +26,7 @@ const mockRequire = (name) => {
   if (name === '@/lib/telegram-links') return { svoyeTelegramBotUsername: 'svoe_live_bot' };
   if (name === '@/lib/website-direct-neon') return { isDirectNeonConfigured:()=>false,prepareDirectWebsite:async()=>{throw Error('Unexpected direct route');} };
   if (name === '@/lib/website-handoff-canary') return require('../lib/website-handoff-canary.ts');
+  if (name === '@/lib/website-handoff-pilot') return require('../lib/website-handoff-pilot.ts');
   // Admission/driver integration is covered separately with actual source.
   if (name === '@/lib/website-admission') return {
     isAdmissionConfigured: () => true,

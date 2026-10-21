@@ -4,6 +4,7 @@ import { svoyeTelegramBotUsername } from "@/lib/telegram-links";
 import { CANARY_SUMMARY, isCanaryRequest, renderCanaryPage, readCanaryUpstreamFailure } from "@/lib/website-handoff-canary";
 import { isAdmissionConfigured, reserveWebsiteAdmission } from "@/lib/website-admission";
 import { isDirectNeonConfigured, prepareDirectWebsite } from "@/lib/website-direct-neon";
+import { PILOT_COOKIE, PILOT_UNTIL, isPilotEntry, isPilotSession } from "@/lib/website-handoff-pilot";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +23,19 @@ const isReady = () =>
 const noStore = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 
 export async function GET(request?: NextRequest) {
+  if (request?.nextUrl.searchParams.has("pilot")) {
+    if (!isPilotEntry(request) || !isDirectNeonConfigured()) {
+      return NextResponse.json({ enabled: false }, { status: 404, headers: noStore });
+    }
+    const response = NextResponse.redirect(new URL("/", request.nextUrl.origin), 303);
+    response.headers.set("Cache-Control", "no-store");
+    response.headers.set("Referrer-Policy", "no-referrer");
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    response.cookies.set(PILOT_COOKIE, process.env.SVOYE_HANDOFF_PILOT_ACCESS!, {
+      httpOnly: true, secure: true, sameSite: "strict", path: "/", expires: new Date(PILOT_UNTIL),
+    });
+    return response;
+  }
   if (isCanaryRequest(request?.nextUrl, process.env) && isAdmissionConfigured()) {
     const nonce = randomBytes(18).toString("base64");
     return new NextResponse(renderCanaryPage(nonce), { headers: {
@@ -33,7 +47,7 @@ export async function GET(request?: NextRequest) {
     } });
   }
   const requestedCanary = request?.nextUrl.searchParams?.has("canary") ?? false;
-  return NextResponse.json({ enabled: !requestedCanary && isReady() }, { headers: noStore });
+  return NextResponse.json({ enabled: !requestedCanary && (isReady() || (isPilotSession(request) && isDirectNeonConfigured())) }, { headers: noStore });
 }
 
 /**
@@ -43,13 +57,14 @@ export async function GET(request?: NextRequest) {
  * Does not accept an arbitrary URL from the client. Raw token never reaches DB or
  * the webhook. Bot must verify the one-time hash before revealing the text.
  *
- * Deliberately disabled until BOTH the secured persistence webhook and bot-side
- * redemption are ready; do not enable during live booking/reminder testing.
+ * Public readiness is separate from the finite invited pilot. Every path retains
+ * the same explicit consent, origin, content, storage and expiry checks.
  */
 export async function POST(request: NextRequest) {
   const requestedCanary = request.nextUrl.searchParams?.has("canary") ?? false;
   const canary = isCanaryRequest(request.nextUrl, process.env);
-  if ((requestedCanary ? !canary : !isReady()) || !isAdmissionConfigured()) {
+  const pilot = isPilotSession(request) && isDirectNeonConfigured();
+  if ((requestedCanary ? !canary : !(isReady() || pilot)) || !isAdmissionConfigured()) {
     return NextResponse.json(
       { error: "Підключення Telegram ще готується. Скопіюй підсумок вручну." },
       { status: 503, headers: noStore },
@@ -94,7 +109,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (process.env.SVOYE_HANDOFF_DIRECT_NEON_ENABLED === "true") {
-    const result = await prepareDirectWebsite(text, canary ? "synthetic" : "normal");
+    const result = await prepareDirectWebsite(text, canary ? "synthetic" : pilot ? "pilot" : "normal");
     return NextResponse.json(result.body, { status: result.status, headers: noStore });
   }
 
