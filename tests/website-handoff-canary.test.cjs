@@ -27,6 +27,7 @@ function route(config = env(), responder = async () => ({ ok: true, json: async 
     static json(body, options) { return new Response(body, options); }
   }
   const mockRequire = name => name === 'next/server' ? { NextResponse: Response }
+    : name === '@/lib/website-direct-neon' ? { isDirectNeonConfigured:()=>false,prepareDirectWebsite:async()=>{throw Error('Unexpected direct route');} }
     : name === '@/lib/telegram-links' ? { svoyeTelegramBotUsername: 'svoe_live_bot' }
     : name === '@/lib/website-handoff-canary' ? helper
     : name === '@/lib/website-admission' ? {
@@ -239,4 +240,5 @@ test('form displays only fixed failure and node aliases, never nested upstream c
     if(failure.code==='WORKFLOW_START_FAILED')assert.ok(elements.status.textContent.includes('WORKFLOW_START_FAILED / STORE'));
   }
 });
+
 

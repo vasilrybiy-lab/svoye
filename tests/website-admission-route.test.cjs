@@ -51,6 +51,7 @@ function harness({env=config(),query,upstream}={}){
   }
   const routeModule={exports:{}};
   const mockRequire=name=>name==='next/server'?{NextResponse:Response}:
+    name==='@/lib/website-direct-neon'?{isDirectNeonConfigured:()=>false,prepareDirectWebsite:async()=>{throw Error('Unexpected direct route');}}:
     name==='@/lib/website-admission'?driverModule.exports:
     name==='@/lib/website-handoff-canary'?helper:
     name==='@/lib/telegram-links'?{svoyeTelegramBotUsername:'svoe_live_bot'}:require(name);
@@ -144,3 +145,4 @@ test('upstream uncertainty consumes one reservation and never returns a success 
     assert.match(result.body.error,/Не повторюй/);
   }
 });
+
