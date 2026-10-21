@@ -262,6 +262,64 @@ async function changeDifficultySummary(page) {
   await page.getByRole('button', { name: /^Далі/ }).click();
   await page.getByRole('button', { name: /Побачити підсумок/ }).click();
 }
+
+test('private invite: actual mobile summary and consent work without cookies, including activation after reflection', { skip: Boolean(liveOrigin) }, async t => {
+  for (const activateLate of [false, true]) await t.test(activateLate ? 'activate on existing summary' : 'enter through fragment invite', async () => {
+    const key = 'c'.repeat(64), fragment = '#svoe-pilot=' + key;
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const page = await context.newPage(), seen = observe(page), requests = [];
+    await context.clearCookies();
+    await page.addInitScript(() => Object.defineProperty(document, 'cookie', { get: () => '', set: () => {}, configurable: true }));
+    await page.route('**/api/website-handoff', async route => {
+      const request = route.request(), headers = request.headers();
+      assert.equal(headers.cookie, undefined);
+      assert.equal(request.url().includes(key), false);
+      assert.equal((headers.referer || '').includes(key), false);
+      const authorized = headers['x-svoe-pilot-access'] === key;
+      if (request.method() === 'GET') {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ enabled: authorized }) });
+      }
+      assert.equal(authorized, true);
+      const body = request.postDataJSON();
+      assert.equal(JSON.stringify(body).includes(key), false);
+      requests.push(body);
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+        telegramUrl: 'https://t.me/svoe_live_bot?start=sv_' + 'C'.repeat(43), expiresInSeconds: 600,
+      }) });
+    });
+    try {
+      await page.goto(origin + '/' + (activateLate ? '' : fragment), { waitUntil: 'networkidle' });
+      await page.locator('.v2-direction-list button').first().click();
+      await page.locator('#v2-notes').fill('QA: вигаданий підсумок приватної проби');
+      await page.getByRole('button', { name: /Перейти до рефлексії/ }).click();
+      for (let n = 0; n < 3; n++) await page.locator('.v2-skip').nth(n).click();
+      await page.getByRole('button', { name: /^Далі/ }).click();
+      await page.getByLabel('Складнощів не було').check();
+      await page.getByRole('button', { name: /^Далі/ }).click();
+      for (let n = 0; n < 2; n++) await page.locator('.v2-skip').nth(n).click();
+      await page.getByRole('button', { name: /Побачити підсумок/ }).click();
+      const summary = await page.locator('.v2-handoff-preview-text').textContent();
+      if (activateLate) {
+        assert.equal(await page.locator('.v2-consent').count(), 0);
+        await page.evaluate(hash => { location.hash = hash; }, fragment);
+      }
+      await page.waitForSelector('.v2-consent input');
+      assert.equal(await page.locator('.v2-handoff-preview-text').textContent(), summary);
+      assert.equal(await page.locator('.v2-consent input').isChecked(), false);
+      assert.equal(await page.getByRole('button', { name: /Підготувати перехід у Telegram/ }).isDisabled(), true);
+      assert.equal(requests.length, 0);
+      await page.locator('.v2-consent input').check();
+      await page.getByRole('button', { name: /Підготувати перехід у Telegram/ }).click();
+      await page.waitForSelector('.v2-handoff-success a');
+      assert.equal(requests.length, 1);
+      assert.deepEqual(requests[0], { consent: true, contextVersion: 1, messageText: summary });
+      assert.equal(await page.locator('.v2-handoff-success a').getAttribute('href'),
+        'https://t.me/svoe_live_bot?start=sv_' + 'C'.repeat(43));
+      assert.deepEqual(await context.cookies(), []);
+      assert.deepEqual(seen.jsErrors, []);
+    } finally { await context.close(); }
+  });
+});
 async function startSyntheticHandoff(page, count) {
   await page.locator('.v2-consent input').check();
   await page.getByRole('button', { name: /Підготувати перехід у Telegram/ }).click();
