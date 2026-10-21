@@ -28,7 +28,8 @@ function harness({env=config(),db,queue}={}){
  const admission=load('lib/website-admission.ts',{'@neondatabase/serverless':{neon},'./website-admission-policy.cjs':policy});
  const direct=load('lib/website-direct-neon.ts',{'@neondatabase/serverless':{neon},'./website-admission':admission,'./website-admission-policy.cjs':policy});
  const route=load('app/api/website-handoff/route.ts',{'next/server':{NextResponse:{json:(body,o={})=>({body,status:o.status??200,headers:o.headers})}},
- '@/lib/telegram-links':{svoyeTelegramBotUsername:'svoe_live_bot'},'@/lib/website-admission':admission,'@/lib/website-direct-neon':direct,'@/lib/website-handoff-canary':helper});
+ '@/lib/telegram-links':{svoyeTelegramBotUsername:'svoe_live_bot'},'@/lib/website-admission':admission,'@/lib/website-direct-neon':direct,'@/lib/website-handoff-canary':helper,
+ '@/lib/website-handoff-pilot':require('../lib/website-handoff-pilot.ts')});
  return {...route,...direct,calls,http,env};
 }
 function request(messageText='Вигаданий підсумок',changes={}){const url=new URL(changes.url||'https://svoe.live/api/website-handoff');return {nextUrl:url,
