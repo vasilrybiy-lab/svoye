@@ -8,6 +8,7 @@ type Env = Record<string, string | undefined>;
 type PilotRequest = {
   nextUrl?: { protocol?: string; hostname?: string; port?: string; searchParams?: { getAll(name: string): string[] } };
   cookies?: { get(name: string): { value: string } | undefined };
+  headers?: { get(name: string): string | null | undefined };
 };
 
 function matches(value: unknown, env: Env): boolean {
@@ -28,5 +29,6 @@ export function isPilotEntry(request: PilotRequest | undefined, env: Env = proce
   return scope(request, env, now) && values.length === 1 && matches(values[0], env);
 }
 export function isPilotSession(request: PilotRequest | undefined, env: Env = process.env, now = Date.now()): boolean {
-  return scope(request, env, now) && matches(request?.cookies?.get(PILOT_COOKIE)?.value, env);
+  const explicitAccess = request?.headers?.get("x-svoe-pilot-access");
+  return scope(request, env, now) && matches(explicitAccess ?? request?.cookies?.get(PILOT_COOKIE)?.value, env);
 }

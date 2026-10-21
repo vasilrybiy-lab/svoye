@@ -34,9 +34,9 @@ function harness(env=config(), now=NOW) {
   return {...route,...helper,calls,env};
 }
 const summary='Моя проба: хочу дослідити дизайн і створити невеликий проєкт.\n'+ 'Ще власні висновки. '.repeat(100);
-function request({url='https://svoe.live/api/website-handoff',cookie,origin='https://svoe.live',consent=true}={}) {
+function request({url='https://svoe.live/api/website-handoff',cookie,access,origin='https://svoe.live',consent=true}={}) {
   return {nextUrl:new URL(url),cookies:{get:()=>cookie?{value:cookie}:undefined},
-    headers:new Map([['origin',origin],['content-type','application/json']]),
+    headers:new Map([['origin',origin],['content-type','application/json'],...(access?[['x-svoe-pilot-access',access]]:[])]),
     text:async()=>JSON.stringify({messageText:summary,consent,contextVersion:1})};
 }
 test('private entry redirects to clean site with secure finite cookie and no storage',async()=>{
@@ -80,4 +80,23 @@ test('valid session uses actual full summary in pilot mode, retaining consent an
   assert.equal((await h.POST(q)).status,200);
   assert.deepEqual(h.calls,[[summary,'pilot']]);
   assert.equal(h.env.SVOYE_HANDOFF_BOT_READY,'false');
+});
+test('private header works without cookies and cannot bypass scope, consent or explicit wrong key',async()=>{
+  const h=harness(),q=request({access:KEY});
+  assert.equal((await h.GET(q)).body.enabled,true);
+  assert.equal((await h.POST(q)).status,200);
+  assert.deepEqual(h.calls,[[summary,'pilot']]);
+  for(const [env,now,url,access,cookie] of [
+    [config(),NOW,'https://svoe.live/api/website-handoff','b'.repeat(64),KEY],
+    [config(),NOW,'https://other.example/api/website-handoff',KEY,undefined],
+    [{...config(),VERCEL_ENV:'production'},NOW,'https://svoe.live/api/website-handoff',KEY,undefined],
+    [config(),Date.parse('2026-10-22T12:45:00.000Z'),'https://svoe.live/api/website-handoff',KEY,undefined],
+  ]) {
+    const closed=harness(env,now),r=request({url,access,cookie});
+    assert.equal((await closed.GET(r)).body.enabled,false);
+    assert.equal((await closed.POST(r)).status,503);assert.deepEqual(closed.calls,[]);
+  }
+  assert.equal((await h.POST(request({access:KEY,consent:false}))).status,400);
+  assert.equal((await h.POST(request({access:KEY,origin:'https://other.example'}))).status,403);
+  assert.equal(h.calls.length,1);
 });
