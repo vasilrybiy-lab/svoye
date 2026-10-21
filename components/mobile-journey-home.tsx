@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { svoyeTelegramBotUsername, svoyeTelegramLink } from "@/lib/telegram-links";
+import { pilotHeaders, readPilotAccess } from "@/lib/website-handoff-access";
 import {
   ArrowLeft, ArrowRight, Check, ChevronRight, ClipboardCopy,
   Compass, FlaskConical, Hammer, HeartHandshake, LifeBuoy,
@@ -104,15 +105,27 @@ export default function MobileJourneyHome() {
   const [handoffUrl, setHandoffUrl] = useState("");
   const [handoffError, setHandoffError] = useState("");
   const handoffRequest = useRef<AbortController | null>(null);
+  const handoffAccess = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     let live = true;
-    fetch("/api/website-handoff", { cache: "no-store" })
-      .then(async response => response.ok ? (await response.json() as { enabled?: boolean }) : { enabled: false })
-      .then(data => { if (live) setHandoffAvailable(data?.enabled === true); })
-      .catch(() => { if (live) setHandoffAvailable(false); });
+    let revision = 0;
+    function checkReadiness(hashChange = false) {
+      const access = readPilotAccess(window.location.hash);
+      if (hashChange && !access) return;
+      if (access) handoffAccess.current = access;
+      const ownRevision = ++revision;
+      fetch("/api/website-handoff", { cache: "no-store", headers: pilotHeaders(handoffAccess.current) })
+        .then(async response => response.ok ? (await response.json() as { enabled?: boolean }) : { enabled: false })
+        .then(data => { if (live && revision === ownRevision) setHandoffAvailable(data?.enabled === true); })
+        .catch(() => { if (live && revision === ownRevision) setHandoffAvailable(false); });
+    }
+    const onHashChange = () => checkReadiness(true);
+    window.addEventListener("hashchange", onHashChange);
+    checkReadiness();
     return () => {
       live = false;
+      window.removeEventListener("hashchange", onHashChange);
       handoffRequest.current?.abort();
       handoffRequest.current = null;
     };
@@ -171,7 +184,7 @@ export default function MobileJourneyHome() {
     try {
       const response = await fetch("/api/website-handoff", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...pilotHeaders(handoffAccess.current) },
         body: JSON.stringify({ consent: true, contextVersion: 1, messageText: summary }),
         signal: request.signal,
       });
