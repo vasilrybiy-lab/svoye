@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { svoyeTelegramBotUsername } from "@/lib/telegram-links";
 import { CANARY_SUMMARY, isCanaryRequest, renderCanaryPage, readCanaryUpstreamFailure } from "@/lib/website-handoff-canary";
 import { isAdmissionConfigured, reserveWebsiteAdmission } from "@/lib/website-admission";
+import { isDirectNeonConfigured, prepareDirectWebsite } from "@/lib/website-direct-neon";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,9 +14,10 @@ const TOKEN_TTL_MS = 10 * 60 * 1000;
 
 const isReady = () =>
   process.env.SVOYE_HANDOFF_BOT_READY === "true" &&
+  (process.env.SVOYE_HANDOFF_DIRECT_NEON_ENABLED === "true" ? isDirectNeonConfigured() : (
   Boolean(process.env.SVOYE_HANDOFF_WEBHOOK_URL) &&
   Boolean(process.env.SVOYE_HANDOFF_WEBHOOK_SECRET) &&
-  isAdmissionConfigured();
+  isAdmissionConfigured()));
 
 const noStore = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 
@@ -89,6 +91,11 @@ export async function POST(request: NextRequest) {
   // Reject any personal or modified text before it can reach n8n in diagnostic mode.
   if (canary && text !== CANARY_SUMMARY) {
     return NextResponse.json({ error: "Дозволено лише незмінений тестовий підсумок." }, { status: 400, headers: noStore });
+  }
+
+  if (process.env.SVOYE_HANDOFF_DIRECT_NEON_ENABLED === "true") {
+    const result = await prepareDirectWebsite(text, canary ? "synthetic" : "normal");
+    return NextResponse.json(result.body, { status: result.status, headers: noStore });
   }
 
   const endpoint = process.env.SVOYE_HANDOFF_WEBHOOK_URL!;
@@ -169,5 +176,6 @@ export async function POST(request: NextRequest) {
     expiresInSeconds: TOKEN_TTL_MS / 1000,
   }, { headers: noStore });
 }
+
 
 
