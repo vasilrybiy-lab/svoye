@@ -104,7 +104,7 @@ test('390px mobile: teen → actual micro-trial → reflection → summary → m
     for (let n = 0; n < 2; n++) await page.locator('.v2-skip').nth(n).click();
     await page.getByRole('button', { name: /Побачити підсумок/ }).click();
 
-    assert.match(await page.locator('.v2-handoff').innerText(), /Автоматичну передачу підсумку ще налаштовуємо/);
+    assert.match(await page.locator('.v2-handoff').innerText(), /Зараз автоматична передача підсумку недоступна/);
     assert.equal(await page.locator('.v2-handoff-simple a').getAttribute('href'),
       'https://t.me/svoe_live_bot?start=site_trial');
     assert.equal(await page.locator('.v2-consent').count(), 0);

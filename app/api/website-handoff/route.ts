@@ -47,7 +47,16 @@ export async function GET(request?: NextRequest) {
     } });
   }
   const requestedCanary = request?.nextUrl.searchParams?.has("canary") ?? false;
-  return NextResponse.json({ enabled: !requestedCanary && (isReady() || (isPilotSession(request) && isDirectNeonConfigured())) }, { headers: noStore });
+  const pilot = isPilotSession(request) && isDirectNeonConfigured();
+  const response = NextResponse.json({ enabled: !requestedCanary && (isReady() || pilot) }, { headers: noStore });
+  // Keep a verified invitation across same-site navigation in mobile browsers.
+  // The fragment/header path remains available when cookies are blocked.
+  if (!requestedCanary && pilot && request?.headers.get("x-svoe-pilot-access")) {
+    response.cookies.set(PILOT_COOKIE, process.env.SVOYE_HANDOFF_PILOT_ACCESS!, {
+      httpOnly: true, secure: true, sameSite: "strict", path: "/", expires: new Date(PILOT_UNTIL),
+    });
+  }
+  return response;
 }
 
 /**

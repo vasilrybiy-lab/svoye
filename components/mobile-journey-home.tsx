@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { svoyeTelegramBotUsername, svoyeTelegramLink } from "@/lib/telegram-links";
-import { pilotHeaders, readPilotAccess } from "@/lib/website-handoff-access";
+import { pilotHeaders, createHandoffReadiness } from "@/lib/website-handoff-access";
 import {
   ArrowLeft, ArrowRight, Check, ChevronRight, ClipboardCopy,
   Compass, FlaskConical, Hammer, HeartHandshake, LifeBuoy,
@@ -100,6 +100,8 @@ export default function MobileJourneyHome() {
   const [notes, setNotes] = useState("");
   const [copied, setCopied] = useState<"idle" | "done" | "manual">("idle");
   const [handoffAvailable, setHandoffAvailable] = useState(false);
+  const [handoffChecking, setHandoffChecking] = useState(false);
+  const handoffCheck = useRef<(() => void) | null>(null);
   const [handoffConsent, setHandoffConsent] = useState(false);
   const [handoffBusy, setHandoffBusy] = useState(false);
   const [handoffUrl, setHandoffUrl] = useState("");
@@ -108,28 +110,39 @@ export default function MobileJourneyHome() {
   const handoffAccess = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    let live = true;
-    let revision = 0;
-    function checkReadiness(hashChange = false) {
-      const access = readPilotAccess(window.location.hash);
-      if (hashChange && !access) return;
-      if (access) handoffAccess.current = access;
-      const ownRevision = ++revision;
-      fetch("/api/website-handoff", { cache: "no-store", headers: pilotHeaders(handoffAccess.current) })
-        .then(async response => response.ok ? (await response.json() as { enabled?: boolean }) : { enabled: false })
-        .then(data => { if (live && revision === ownRevision) setHandoffAvailable(data?.enabled === true); })
-        .catch(() => { if (live && revision === ownRevision) setHandoffAvailable(false); });
-    }
-    const onHashChange = () => checkReadiness(true);
-    window.addEventListener("hashchange", onHashChange);
-    checkReadiness();
+    const readiness = createHandoffReadiness({
+      readFragment: () => window.location.hash,
+      fetchStatus: async headers => {
+        const response = await fetch("/api/website-handoff", { cache: "no-store", headers });
+        return response.ok && (await response.json() as { enabled?: boolean })?.enabled === true;
+      },
+      onAccess: access => { handoffAccess.current = access; },
+      onReady: setHandoffAvailable,
+      onChecking: setHandoffChecking,
+    });
+    const check = () => { void readiness.check(); };
+    const visible = () => { if (document.visibilityState === "visible") check(); };
+    handoffCheck.current = check;
+    window.addEventListener("hashchange", check);
+    window.addEventListener("pageshow", check);
+    window.addEventListener("focus", check);
+    document.addEventListener("visibilitychange", visible);
+    check();
     return () => {
-      live = false;
-      window.removeEventListener("hashchange", onHashChange);
+      readiness.stop();
+      handoffCheck.current = null;
+      window.removeEventListener("hashchange", check);
+      window.removeEventListener("pageshow", check);
+      window.removeEventListener("focus", check);
+      document.removeEventListener("visibilitychange", visible);
       handoffRequest.current?.abort();
       handoffRequest.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (stage === "summary") handoffCheck.current?.();
+  }, [stage]);
 
   function resetHandoff() {
     // Invalidate before aborting: a completed response may already be queued.
@@ -344,7 +357,7 @@ export default function MobileJourneyHome() {
                 <a className="v2-button dark" href={handoffUrl} rel="noopener noreferrer">Відкрити Telegram <ArrowRight size={18}/></a>
               </div>}
               {handoffError && <p className="v2-handoff-error" role="alert">{handoffError}</p>}
-            </> : <div className="v2-handoff-simple"><p className="v2-helpnote">Автоматичну передачу підсумку ще налаштовуємо. Ти можеш відкрити бот і самостійно надіслати скопійований результат, якщо хочеш.</p><a className="v2-button dark" href={svoyeTelegramLink("site_trial")} target="_blank" rel="noopener noreferrer">Відкрити Telegram <ArrowRight size={18}/></a></div>}
+            </> : <div className="v2-handoff-simple"><p className="v2-helpnote">Зараз автоматична передача підсумку недоступна. Перевір підключення ще раз або скопіюй підсумок для ручного продовження.</p><button className="v2-textbtn" type="button" disabled={handoffChecking} onClick={() => handoffCheck.current?.()}>{handoffChecking ? "Перевіряємо підключення…" : "Перевірити підключення"}</button><a className="v2-button dark" href={svoyeTelegramLink("site_trial")} target="_blank" rel="noopener noreferrer">Відкрити Telegram <ArrowRight size={18}/></a></div>}
             <div className="v2-handoff-copy">
               <button className="v2-button v2-copy-button" type="button" onClick={copySummary}>
                 {copied === "done" ? <><Check size={19}/> Підсумок скопійовано</> : <><ClipboardCopy size={19}/> Скопіювати підсумок</>}

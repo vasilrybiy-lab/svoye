@@ -100,3 +100,17 @@ test('private header works without cookies and cannot bypass scope, consent or e
   assert.equal((await h.POST(request({access:KEY,origin:'https://other.example'}))).status,403);
   assert.equal(h.calls.length,1);
 });
+
+test('verified header establishes a finite secure cookie; public and forged headers do not',async()=>{
+  const h=harness();
+  const verified=await h.GET(request({access:KEY}));
+  assert.equal(verified.body.enabled,true);
+  assert.equal(verified.cookie.name,h.PILOT_COOKIE);
+  assert.equal(verified.cookie.value,KEY);
+  assert.deepEqual({...verified.cookie.options,expires:verified.cookie.options.expires.toISOString()},
+    {httpOnly:true,secure:true,sameSite:'strict',path:'/',expires:h.PILOT_UNTIL});
+  for(const q of [request(),request({access:'b'.repeat(64)}),request({access:'b'.repeat(64),cookie:KEY})]) {
+    const denied=await h.GET(q);assert.equal(denied.body.enabled,false);assert.equal(denied.cookie,undefined);
+  }
+  assert.deepEqual(h.calls,[],'readiness must not reserve or store a summary');
+});
