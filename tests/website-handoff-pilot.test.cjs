@@ -3,7 +3,7 @@
 const { test } = require('node:test'), assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path');
 const { stripTypeScriptTypes } = require('node:module');
-const NOW = Date.parse('2026-10-21T18:00:00.000Z'), KEY = 'a'.repeat(64);
+const NOW = Date.parse('2026-10-22T16:00:00.000Z'), KEY = 'a'.repeat(64);
 const config = () => ({ VERCEL_ENV:'preview', VERCEL_GIT_COMMIT_REF:'feature/v2-svoe-live-telegram-2026-10-16',
   SVOYE_HANDOFF_BOT_READY:'false', SVOYE_HANDOFF_DIRECT_NEON_ENABLED:'true', SVOYE_HANDOFF_PILOT_ACCESS:KEY });
 function source(file) {
@@ -52,8 +52,8 @@ test('public, forged, expired and wrong environment entry/session remain closed'
   for(const [env,now,url,cookie] of [
     [config(),NOW,'https://svoe.live/api/website-handoff',undefined],
     [config(),NOW,'https://svoe.live/api/website-handoff','b'.repeat(64)],
-    [config(),Date.parse('2026-10-22T12:45:00.000Z'),'https://svoe.live/api/website-handoff',KEY],
-    [config(),Date.parse('2026-10-21T17:29:59.999Z'),'https://svoe.live/api/website-handoff',KEY],
+    [config(),Date.parse('2026-10-22T18:00:00.000Z'),'https://svoe.live/api/website-handoff',KEY],
+    [config(),Date.parse('2026-10-22T15:29:59.999Z'),'https://svoe.live/api/website-handoff',KEY],
     [{...config(),VERCEL_ENV:'production'},NOW,'https://svoe.live/api/website-handoff',KEY],
     [{...config(),VERCEL_GIT_COMMIT_REF:'main'},NOW,'https://svoe.live/api/website-handoff',KEY],
     [{...config(),SVOYE_HANDOFF_DIRECT_NEON_ENABLED:'false'},NOW,'https://svoe.live/api/website-handoff',KEY],
@@ -90,7 +90,7 @@ test('private header works without cookies and cannot bypass scope, consent or e
     [config(),NOW,'https://svoe.live/api/website-handoff','b'.repeat(64),KEY],
     [config(),NOW,'https://other.example/api/website-handoff',KEY,undefined],
     [{...config(),VERCEL_ENV:'production'},NOW,'https://svoe.live/api/website-handoff',KEY,undefined],
-    [config(),Date.parse('2026-10-22T12:45:00.000Z'),'https://svoe.live/api/website-handoff',KEY,undefined],
+    [config(),Date.parse('2026-10-22T18:00:00.000Z'),'https://svoe.live/api/website-handoff',KEY,undefined],
   ]) {
     const closed=harness(env,now),r=request({url,access,cookie});
     assert.equal((await closed.GET(r)).body.enabled,false);
