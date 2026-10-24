@@ -2,8 +2,8 @@
 import { timingSafeEqual } from "node:crypto";
 
 export const PILOT_COOKIE = "__Host-svoe-journey-pilot";
-export const PILOT_UNTIL = "2026-10-22T18:00:00.000Z";
-const PILOT_FROM = Date.parse("2026-10-22T15:30:00.000Z");
+export const PILOT_UNTIL = "2026-10-24T19:00:00.000Z";
+const PILOT_FROM = Date.parse("2026-10-24T13:45:00.000Z");
 type Env = Record<string, string | undefined>;
 type PilotRequest = {
   nextUrl?: { protocol?: string; hostname?: string; port?: string; searchParams?: { getAll(name: string): string[] } };
