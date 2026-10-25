@@ -4,9 +4,11 @@ import { createHash, randomBytes } from "node:crypto";
 import { isAdmissionConfigured } from "./website-admission";
 import { checkReceipt } from "./website-admission-policy.cjs";
 
+import { validateWebsiteAgeDeclaration } from "./website-service-age.mjs";
+
 type Environment = Record<string, string | undefined>;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
-const STORE_SQL = "SELECT current_user::text AS connected_role,current_database()::text AS database,current_setting('neon.project_id',true) AS project_id,current_setting('neon.branch_id',true) AS branch_id,CASE WHEN current_user='svoe_website_test_runtime' AND current_database()='neondb' AND current_setting('neon.project_id',true)='morning-cake-04594300' AND current_setting('neon.branch_id',true)='br-delicate-heart-b7h6nwzw' THEN public.svoe_test_website_store($1::jsonb) ELSE NULL::jsonb END AS receipt;";
+const STORE_SQL = "SELECT current_user::text AS connected_role,current_database()::text AS database,current_setting('neon.project_id',true) AS project_id,current_setting('neon.branch_id',true) AS branch_id,CASE WHEN current_user='svoe_website_test_runtime' AND current_database()='neondb' AND current_setting('neon.project_id',true)='morning-cake-04594300' AND current_setting('neon.branch_id',true)='br-delicate-heart-b7h6nwzw' THEN public.svoe_age_website_store($1::jsonb) ELSE NULL::jsonb END AS receipt;";
 function expiryEndpoint(env: Environment): string | undefined {
   try {
     const u = new URL(env.SVOYE_HANDOFF_EXPIRY_WEBHOOK_URL || "");
@@ -37,8 +39,9 @@ async function queueAck(response: Response): Promise<Record<string, unknown>> {
     throw Error("EXPIRY_QUEUE_UNCONFIRMED");
   } finally { await reader.cancel().catch(() => {}); }
 }
-export async function prepareDirectWebsite(messageText: string, mode: "synthetic" | "normal" | "pilot") {
+export async function prepareDirectWebsite(messageText: string, mode: "synthetic" | "normal" | "pilot", ageDeclaration: unknown) {
   const fail = (status = 502) => ({status, body:{error:"Передачу не підтверджено. Не повторюй запит; скопіюй підсумок для ручного продовження."}});
+  if (mode !== "synthetic" || !validateWebsiteAgeDeclaration(ageDeclaration)) return fail(503);
   if (!isDirectNeonConfigured() || !messageText.trim() || messageText.length > 4000 || Buffer.byteLength(messageText,"utf8") > 8000) return fail(503);
   const token = randomBytes(32).toString("base64url");
   const tokenHash = createHash("sha256").update(token,"utf8").digest("hex");
@@ -47,7 +50,7 @@ export async function prepareDirectWebsite(messageText: string, mode: "synthetic
   }).query(STORE_SQL,[JSON.stringify(payload)]);
   let requestId: string | undefined;
   try {
-    const result = await query({op:"store",mode,message_text:messageText.trim(),token_hash:tokenHash});
+    const result = await query({op:"store",mode,message_text:messageText.trim(),token_hash:tokenHash,age_declaration:ageDeclaration});
     const row = result.rows?.length === 1 ? result.rows[0] : undefined;
     if (row?.connected_role !== "svoe_website_test_runtime" || row.database !== "neondb" ||
         row.project_id !== "morning-cake-04594300" || row.branch_id !== "br-delicate-heart-b7h6nwzw") return fail();
@@ -57,6 +60,10 @@ export async function prepareDirectWebsite(messageText: string, mode: "synthetic
     requestId = stored.website_request_id;
     const expiry = stored.expires_at;
     const now = Date.now();
+    const age = stored.website_age;
+    if (age?.band !== 'adult' || age.version !== 'age-declaration/v1' || age.assurance !== 'self_declared' ||
+      typeof age.declared_at !== 'string' || !Number.isFinite(Date.parse(age.declared_at)) ||
+      Date.parse(age.declared_at)>now || Date.parse(age.declared_at)<now-600000 || Date.parse(age.declared_at)>=Date.parse(expiry)) throw Error('WEBSITE_AGE_RECEIPT');
     if (typeof expiry !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(expiry) ||
         !Number.isFinite(Date.parse(expiry)) || new Date(expiry).toISOString() !== expiry ||
         Date.parse(expiry) <= now || Date.parse(expiry) > now + 601000 ||

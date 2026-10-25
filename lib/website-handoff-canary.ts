@@ -127,18 +127,22 @@ export function renderCanaryPage(nonce: string): string {
 <style>body{font:18px system-ui;max-width:42rem;margin:3rem auto;padding:1rem;line-height:1.6}button,a{font:inherit;padding:.7rem}label{display:block;margin:1.5rem 0}</style></head>
 <body><h1>Перевірка передачі до Telegram</h1>
 <p>Буде передано лише цей вигаданий підсумок:</p><p>${CANARY_SUMMARY}</p>
-<form id="check"><label><input id="consent" type="checkbox" required> Погоджуюся передати цей тестовий текст</label>
+<form id="check"><label for="age">Вікова група для синтетичного тесту</label><select id="age" required><option value="">Обери групу</option><option value="under14">До 14</option><option value="14to17">14–17</option><option value="adult">18+</option></select><label><input id="consent" type="checkbox" required> Погоджуюся передати цей тестовий текст</label>
 <button id="send" type="submit">Передати тестовий підсумок</button></form>
 <p id="status" role="status" aria-live="polite"></p><a id="telegram" hidden rel="noreferrer noopener">Відкрити Telegram</a>
 <script nonce="${nonce}">
 const form=document.getElementById('check'),button=document.getElementById('send'),status=document.getElementById('status'),link=document.getElementById('telegram');
-let attempted=false;
+let attempted=false,generation=0,active;
+const age=document.getElementById('age');
+age.addEventListener('change',()=>{generation++;active?.abort();link.hidden=true;link.removeAttribute('href');status.textContent=age.value==='under14'?'Сервіс «Своє» доступний із 14 років.':age.value==='14to17'?'Сценарій для 14–17 років ще готується.':'';});
 form.addEventListener('submit',async event=>{
  event.preventDefault(); if(attempted||!document.getElementById('consent').checked)return;
+ if(age.value!=='adult'){status.textContent=age.value==='under14'?'Сервіс «Своє» доступний із 14 років.':'Потрібна дозволена вікова група.';return;}
+ const current=generation;active=new AbortController();
  attempted=true;button.disabled=true;status.textContent='Передаємо тестовий підсумок…';
  try{
-  const response=await fetch(location.pathname+location.search,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({consent:true,contextVersion:1,messageText:${JSON.stringify(CANARY_SUMMARY)}}),cache:'no-store',redirect:'error'});
-  const result=await response.json();
+  const response=await fetch(location.pathname+location.search,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({consent:true,contextVersion:1,ageDeclaration:{band:age.value,version:"age-declaration/v1"},messageText:${JSON.stringify(CANARY_SUMMARY)}}),cache:'no-store',redirect:'error',signal:active.signal});
+  const result=await response.json();if(current!==generation)return;
   if(!response.ok){
    const code=typeof result.diagnostic==='string'&&(/^UPSTREAM_HTTP_[1-5][0-9]{2}$/.test(result.diagnostic)||['CANARY_WRONG_WEBHOOK_ENDPOINT','UPSTREAM_TRANSPORT','UPSTREAM_INVALID_JSON','UPSTREAM_STORAGE_NOT_CONFIRMED'].includes(result.diagnostic))?result.diagnostic:'UNKNOWN';
    const failure=result.upstreamFailure;
@@ -150,7 +154,7 @@ form.addEventListener('submit',async event=>{
   const target=new URL(result.telegramUrl);
   if(target.origin!=='https://t.me'||target.username||target.password||target.pathname!=='/svoe_live_bot'||target.hash||target.searchParams.size!==1||!/^sv_[A-Za-z0-9_-]{43}$/.test(target.searchParams.get('start')||''))throw Error('handoff');
   link.href=result.telegramUrl;link.hidden=false;status.textContent='Тестовий підсумок збережено. Відкрий Telegram та натисни Start.';
- }catch{status.textContent='Передачу не підтверджено. Зупини тест і перевір результат; не повторюй запит.';}
+ }catch{if(current!==generation)return;status.textContent='Передачу не підтверджено. Зупини тест і перевір результат; не повторюй запит.';}
 });</script></body></html>`;
 }
 

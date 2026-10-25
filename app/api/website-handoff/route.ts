@@ -6,6 +6,8 @@ import { isAdmissionConfigured, reserveWebsiteAdmission } from "@/lib/website-ad
 import { isDirectNeonConfigured, prepareDirectWebsite } from "@/lib/website-direct-neon";
 import { PILOT_COOKIE, PILOT_UNTIL, isPilotEntry, isPilotSession } from "@/lib/website-handoff-pilot";
 
+import { websiteAgeGate } from "@/lib/website-service-age.mjs";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -48,7 +50,7 @@ export async function GET(request?: NextRequest) {
   }
   const requestedCanary = request?.nextUrl.searchParams?.has("canary") ?? false;
   const pilot = isPilotSession(request) && isDirectNeonConfigured();
-  const response = NextResponse.json({ enabled: !requestedCanary && (isReady() || pilot) }, { headers: noStore });
+  const response = NextResponse.json({ enabled: false }, { headers: noStore });
   // Keep a verified invitation across same-site navigation in mobile browsers.
   // The fragment/header path remains available when cookies are blocked.
   if (!requestedCanary && pilot && request?.headers.get("x-svoe-pilot-access")) {
@@ -105,6 +107,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Некоректні дані." }, { status: 400, headers: noStore });
   }
   const body = payload as Record<string, unknown>;
+  const ageGate = websiteAgeGate(body, {canary,canarySummary:CANARY_SUMMARY});
+  if (!ageGate.allowed) return NextResponse.json({code:ageGate.code,error:ageGate.code==='SERVICE_MINIMUM_14' ? 'Сервіс «Своє» доступний із 14 років.' : 'Потрібно завершити перевірку умов сервісу.'},{status:ageGate.status,headers:noStore});
+  if (process.env.SVOYE_HANDOFF_DIRECT_NEON_ENABLED !== 'true') return NextResponse.json({code:'AGE_METADATA_DIRECT_REQUIRED',error:'Підключення ще готується.'},{status:503,headers:noStore});
   const text = body.messageText;
   if (body.consent !== true || body.contextVersion !== 1 ||
       typeof text !== "string" || text.trim().length < 1 ||
@@ -118,7 +123,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (process.env.SVOYE_HANDOFF_DIRECT_NEON_ENABLED === "true") {
-    const result = await prepareDirectWebsite(text, canary ? "synthetic" : pilot ? "pilot" : "normal");
+    const result = await prepareDirectWebsite(text, canary ? "synthetic" : pilot ? "pilot" : "normal", body.ageDeclaration);
     return NextResponse.json(result.body, { status: result.status, headers: noStore });
   }
 

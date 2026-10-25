@@ -12,6 +12,8 @@ import {
   microTrials, type MicroTrial, type TrialCategory, ratingLabels,
 } from "@/lib/micro-trials";
 
+import { websiteAgeMessage } from "@/lib/website-service-age.mjs";
+
 type Audience = "teen" | "parent";
 type Stage = "choose" | "task" | "interest" | "difficulty" | "continue" | "summary";
 type ScaleKey = "reason" | "idea" | "make" | "test" | "people" | "persist" | "help" | "bored" | "repeat" | "different";
@@ -91,6 +93,7 @@ function RatingScale({ item, value, onChange, allowSkip = true }: {
   </div>;
 }
 export default function MobileJourneyHome() {
+  const [serviceAge, setServiceAge] = useState("unknown");
   const [audience, setAudience] = useState<Audience>("teen");
   const [stage, setStage] = useState<Stage>("choose");
   const [category, setCategory] = useState<TrialCategory>("build");
@@ -154,6 +157,10 @@ export default function MobileJourneyHome() {
     setHandoffConsent(false);
     setHandoffError("");
   }
+  function changeServiceAge(value: string) {
+    resetHandoff(); setServiceAge(['under14','14to17','adult'].includes(value) ? value : 'unknown');
+    setAnswers({}); setNotes(''); setNoDifficulty(false); setCopied('idle'); setStage('choose');
+  }
   const groupTasks = useMemo(() => microTrials.filter(t => t.category === category), [category]);
   const task: MicroTrial = groupTasks.find(t => t.id === taskId) ?? groupTasks[0];
   const group = directions.find(d => d.id === category)!;
@@ -162,6 +169,7 @@ export default function MobileJourneyHome() {
   const activeCriteria = stage === "interest" ? interest : stage === "difficulty" ? difficultyCriteria : continuationCriteria;
   const complete = activeCriteria.every(q => isAnswered(answers[q.id]));
   function begin(selected: TrialCategory) {
+    if (serviceAge !== "adult") return;
     setCategory(selected); setTaskId(""); setAnswers({}); setNotes(""); setNoDifficulty(false); setCopied("idle"); resetHandoff(); setStage("task");
   }
   function selectTask(id: string) {
@@ -188,7 +196,7 @@ export default function MobileJourneyHome() {
     "Одна проба не визначає професію чи здібності; це спостереження для наступного кроку.",
   ].join("\n");
   async function prepareTelegramHandoff() {
-    if (!handoffAvailable || !handoffConsent || handoffBusy || handoffRequest.current) return;
+    if (serviceAge !== "adult" || !handoffAvailable || !handoffConsent || handoffBusy || handoffRequest.current) return;
     const request = new AbortController();
     handoffRequest.current = request;
     setHandoffBusy(true);
@@ -198,7 +206,7 @@ export default function MobileJourneyHome() {
       const response = await fetch("/api/website-handoff", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...pilotHeaders(handoffAccess.current) },
-        body: JSON.stringify({ consent: true, contextVersion: 1, messageText: summary }),
+        body: JSON.stringify({ consent: true, contextVersion: 1, messageText: summary, ageDeclaration: {band:serviceAge,version:"age-declaration/v1"} }),
         signal: request.signal,
       });
       const data: { telegramUrl?: string; error?: string } = await response.json();
@@ -237,6 +245,13 @@ export default function MobileJourneyHome() {
       </details>
     </header>
     <div className="v2-content">
+      <fieldset className="v2-card"><legend>Перед власною пробою</legend>
+        <label htmlFor="svoe-service-age">Твоя вікова група</label>
+        <select id="svoe-service-age" value={serviceAge} onChange={event => changeServiceAge(event.target.value)} aria-describedby="svoe-age-status">
+          <option value="unknown">Обери групу</option><option value="under14">До 14</option><option value="14to17">14–17</option><option value="adult">18+</option>
+        </select><p id="svoe-age-status" role="status">{websiteAgeMessage(serviceAge)}</p>
+        <p>Не вказуй дату народження чи документи. Вибір іншої групи очищає відповіді поточної проби.</p>
+      </fieldset>
       {stage === "choose" ? <>
         <div className="v2-audience" role="group" aria-label="Для кого сайт">
           <button type="button" className={audience === "teen" ? "selected" : ""} onClick={() => setAudience("teen")}>Я школяр/-ка</button>
@@ -247,14 +262,14 @@ export default function MobileJourneyHome() {
             <p className="v2-eyebrow">КИМ СТАТИ? КУДИ ВСТУПАТИ?</p>
             <h1>Знайди свій напрям.<br/><em>Перевір у дії.</em></h1>
             <p className="v2-lead">Не знаєш, що обрати після школи? Почни з того, що тобі цікаво.</p>
-            <a className="v2-button dark v2-telegram-entry" href={svoyeTelegramLink("site_teen")} target="_blank" rel="noopener noreferrer">Поставити запитання в Telegram <ArrowRight size={18}/></a>
+            <a className="v2-button dark v2-telegram-entry" href={serviceAge === "adult" ? svoyeTelegramLink("site_teen") : undefined} aria-disabled={serviceAge !== "adult"} target="_blank" rel="noopener noreferrer">Поставити запитання в Telegram <ArrowRight size={18}/></a>
             <div className="v2-ribbons" aria-hidden="true"><span/><span/></div>
           </div>
           <section className="v2-directions" id="trials" aria-labelledby="v2-directions-title">
             <h2 id="v2-directions-title">Що тобі ближче?</h2>
             <div className="v2-direction-list">{directions.map(dir => {
               const Icon = dir.icon;
-              return <button type="button" key={dir.id} className={`v2-direction v2-${dir.tint}`} onClick={() => begin(dir.id)}>
+              return <button type="button" key={dir.id} className={`v2-direction v2-${dir.tint}`} disabled={serviceAge !== "adult"} onClick={() => begin(dir.id)}>
                 <span className="v2-dir-icon"><Icon size={24}/></span>
                 <span className="v2-dir-text"><strong>{dir.label}</strong><small>{dir.subtitle}</small></span><ChevronRight size={23}/>
               </button>;
@@ -264,7 +279,7 @@ export default function MobileJourneyHome() {
           <div><p className="v2-eyebrow">ПІСЛЯ ШКОЛИ · ПРОФЕСІЯ ТА НАВЧАННЯ</p>
             <h1>Допоможіть дитині <em>знайти своє.</em></h1>
             <p className="v2-lead">Спокійніше дослідити інтереси, навчання та перспективи розвитку. Без ярликів і тиску.</p>
-            <a className="v2-button dark v2-telegram-entry" href={svoyeTelegramLink("site_parent")} target="_blank" rel="noopener noreferrer">Поспілкуватися з ботом у Telegram <ArrowRight size={18}/></a>
+            <a className="v2-button dark v2-telegram-entry" href={serviceAge === "adult" ? svoyeTelegramLink("site_parent") : undefined} aria-disabled={serviceAge !== "adult"} target="_blank" rel="noopener noreferrer">Поспілкуватися з ботом у Telegram <ArrowRight size={18}/></a>
           </div>
           <div className="v2-card"><h2>З чого почати?</h2>
             <p>З розмови та невеликої практичної проби. Підліток залишається головним учасником рішення.</p>
@@ -272,7 +287,7 @@ export default function MobileJourneyHome() {
             <button type="button" className="v2-textbtn" onClick={() => setAudience("teen")}>Подивитися малі проби</button>
           </div>
         </div>}
-      </> : <>
+      </> : serviceAge === "adult" ? <>
         <div className="v2-progress">
           <button type="button" className="v2-back" onClick={back}><ArrowLeft size={18}/> Назад</button>
           <div className="v2-progress-dots" role="progressbar" aria-label="Проходження проби" aria-valuemin={1} aria-valuemax={stages.length} aria-valuenow={stageIndex+1}>{stages.map((s,i) => <span key={s} className={stageIndex===i ? "current" : ""}/>)}</div>
@@ -357,7 +372,7 @@ export default function MobileJourneyHome() {
                 <a className="v2-button dark" href={handoffUrl} rel="noopener noreferrer">Відкрити Telegram <ArrowRight size={18}/></a>
               </div>}
               {handoffError && <p className="v2-handoff-error" role="alert">{handoffError}</p>}
-            </> : <div className="v2-handoff-simple"><p className="v2-helpnote">Зараз автоматична передача підсумку недоступна. Перевір підключення ще раз або скопіюй підсумок для ручного продовження.</p><button className="v2-textbtn" type="button" disabled={handoffChecking} onClick={() => handoffCheck.current?.()}>{handoffChecking ? "Перевіряємо підключення…" : "Перевірити підключення"}</button><a className="v2-button dark" href={svoyeTelegramLink("site_trial")} target="_blank" rel="noopener noreferrer">Відкрити Telegram <ArrowRight size={18}/></a></div>}
+            </> : <div className="v2-handoff-simple"><p className="v2-helpnote">Зараз автоматична передача підсумку недоступна. Перевір підключення ще раз або скопіюй підсумок для ручного продовження.</p><button className="v2-textbtn" type="button" disabled={handoffChecking} onClick={() => handoffCheck.current?.()}>{handoffChecking ? "Перевіряємо підключення…" : "Перевірити підключення"}</button><a className="v2-button dark" href={serviceAge === "adult" ? svoyeTelegramLink("site_trial") : undefined} aria-disabled={serviceAge !== "adult"} target="_blank" rel="noopener noreferrer">Відкрити Telegram <ArrowRight size={18}/></a></div>}
             <div className="v2-handoff-copy">
               <button className="v2-button v2-copy-button" type="button" onClick={copySummary}>
                 {copied === "done" ? <><Check size={19}/> Підсумок скопійовано</> : <><ClipboardCopy size={19}/> Скопіювати підсумок</>}
@@ -368,7 +383,7 @@ export default function MobileJourneyHome() {
           </div>
           <button className="v2-textbtn" type="button" onClick={() => setStage("choose")}>Спробувати інший напрям</button>
         </>}
-      </>}
+      </> : null}
     </div>
     <footer className="v2-footer"><a href="/about">Про «Своє»</a><span>Почни з дії. Рішення залишається за тобою.</span><a href="#top">Нагору ↑</a></footer>
   </main>;
