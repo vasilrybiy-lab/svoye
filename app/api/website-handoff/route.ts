@@ -3,10 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { svoyeTelegramBotUsername } from "@/lib/telegram-links";
 import { CANARY_SUMMARY, isCanaryRequest, renderCanaryPage, readCanaryUpstreamFailure } from "@/lib/website-handoff-canary";
 import { isAdmissionConfigured, reserveWebsiteAdmission } from "@/lib/website-admission";
-import { isDirectNeonConfigured, prepareDirectWebsite } from "@/lib/website-direct-neon";
+import { isDirectNeonConfigured, prepareDirectWebsite, isTrialDirectConfigured, prepareDirectTrial } from "@/lib/website-direct-neon";
 import { PILOT_COOKIE, PILOT_UNTIL, isPilotEntry, isPilotSession } from "@/lib/website-handoff-pilot";
 
-import { websiteAgeGate } from "@/lib/website-service-age.mjs";
+import { validTrialEnvelope } from "@/lib/trial-reflection.mjs";
+import { websiteAgeGate, validateWebsiteAgeDeclaration } from "@/lib/website-service-age.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ const isReady = () =>
 
 const noStore = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 
-export async function GET(request?: NextRequest) {
+export async function GET(request: NextRequest) {
   if (request?.nextUrl.searchParams.has("pilot")) {
     if (!isPilotEntry(request) || !isDirectNeonConfigured()) {
       return NextResponse.json({ enabled: false }, { status: 404, headers: noStore });
@@ -107,6 +108,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Некоректні дані." }, { status: 400, headers: noStore });
   }
   const body = payload as Record<string, unknown>;
+  // Version 2 is explicit and may never fall through to text-only storage.
+  // The typed store stays closed except for verified finite synthetic canaries.
+  if (body.contextVersion === 2 || Object.hasOwn(body,"trialReflection")) {
+    const age = body.ageDeclaration as {band?:unknown} | undefined;
+    if (age?.band === "under14") return NextResponse.json({code:"SERVICE_MINIMUM_14",error:"Сервіс «Своє» доступний із 14 років."},{status:403,headers:noStore});
+    if (age?.band === "14to17") return NextResponse.json({code:"MINOR_SERVICE_POLICY_PENDING",error:"Сценарій для 14–17 років ще готується."},{status:503,headers:noStore});
+    if (!validateWebsiteAgeDeclaration(body.ageDeclaration)) return NextResponse.json({code:"AGE_REQUIRED",error:"Потрібно завершити перевірку умов сервісу."},{status:428,headers:noStore});
+    if (!validTrialEnvelope(body)) return NextResponse.json({code:"INVALID_TRIAL_REFLECTION",error:"Не вдалося перевірити відповіді проби."},{status:400,headers:noStore});
+    if (!canary || !isTrialDirectConfigured()) return NextResponse.json({code:"TRIAL_STORAGE_PENDING",error:"Збереження структурованих відповідей ще готується. Підсумок можна скопіювати."},{status:503,headers:noStore});
+    const result = await prepareDirectTrial(body,canary);
+    return NextResponse.json(result.body,{status:result.status,headers:noStore});
+  }
   const ageGate = websiteAgeGate(body, {canary,canarySummary:CANARY_SUMMARY});
   if (!ageGate.allowed) return NextResponse.json({code:ageGate.code,error:ageGate.code==='SERVICE_MINIMUM_14' ? 'Сервіс «Своє» доступний із 14 років.' : 'Потрібно завершити перевірку умов сервісу.'},{status:ageGate.status,headers:noStore});
   if (process.env.SVOYE_HANDOFF_DIRECT_NEON_ENABLED !== 'true') return NextResponse.json({code:'AGE_METADATA_DIRECT_REQUIRED',error:'Підключення ще готується.'},{status:503,headers:noStore});
@@ -205,6 +218,3 @@ export async function POST(request: NextRequest) {
     expiresInSeconds: TOKEN_TTL_MS / 1000,
   }, { headers: noStore });
 }
-
-
-

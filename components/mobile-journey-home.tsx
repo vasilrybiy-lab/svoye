@@ -12,6 +12,8 @@ import {
   microTrials, type MicroTrial, type TrialCategory, ratingLabels,
 } from "@/lib/micro-trials";
 
+import { buildTrialReflection } from "@/lib/trial-reflection.mjs";
+
 import { websiteAgeMessage } from "@/lib/website-service-age.mjs";
 
 type Audience = "teen" | "parent";
@@ -206,7 +208,7 @@ export default function MobileJourneyHome() {
       const response = await fetch("/api/website-handoff", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...pilotHeaders(handoffAccess.current) },
-        body: JSON.stringify({ consent: true, contextVersion: 1, messageText: summary, ageDeclaration: {band:serviceAge,version:"age-declaration/v1"} }),
+        body: JSON.stringify({ consent: true, contextVersion: 2, trialReflection: buildTrialReflection({trialId:task.id,answers,noDifficulty,notes},new Date().toISOString()), ageDeclaration: {band:serviceAge,version:"age-declaration/v1"} }),
         signal: request.signal,
       });
       const data: { telegramUrl?: string; error?: string } = await response.json();
@@ -362,7 +364,7 @@ export default function MobileJourneyHome() {
                   if (!event.target.checked) resetHandoff();
                   else { setHandoffConsent(true); setHandoffError(""); }
                 }} />
-                <span>Я погоджуюся передати цей підсумок, зокрема мої нотатки, боту «Своє» для продовження розмови. Код передачі діятиме 10 хвилин і спрацює один раз.</span>
+                <span>Я погоджуюся передати підсумок, відповіді, пропуски й нотатки цієї проби боту «Своє» для продовження розмови. Код передачі діятиме 10 хвилин і спрацює один раз.</span>
               </label>
               {!handoffUrl ? <button className="v2-button dark" type="button"
                 disabled={!handoffConsent || handoffBusy} onClick={prepareTelegramHandoff}>
