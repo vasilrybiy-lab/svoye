@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { svoyeTelegramBotUsername, svoyeTelegramLink } from "@/lib/telegram-links";
-import { pilotHeaders, createHandoffReadiness } from "@/lib/website-handoff-access";
+import { useMemo, useState, type CSSProperties } from "react";
+import { svoyeTelegramLink } from "@/lib/telegram-links";
 import {
   ArrowLeft, ArrowRight, Check, ChevronRight, ClipboardCopy,
   Compass, FlaskConical, Hammer, HeartHandshake, LifeBuoy,
@@ -12,7 +11,6 @@ import {
   microTrials, type MicroTrial, type TrialCategory, ratingLabels,
 } from "@/lib/micro-trials";
 
-import { buildTrialReflection } from "@/lib/trial-reflection.mjs";
 
 import { websiteAgeMessage } from "@/lib/website-service-age.mjs";
 
@@ -104,63 +102,8 @@ export default function MobileJourneyHome() {
   const [noDifficulty, setNoDifficulty] = useState(false);
   const [notes, setNotes] = useState("");
   const [copied, setCopied] = useState<"idle" | "done" | "manual">("idle");
-  const [handoffAvailable, setHandoffAvailable] = useState(false);
-  const [handoffChecking, setHandoffChecking] = useState(false);
-  const handoffCheck = useRef<(() => void) | null>(null);
-  const [handoffConsent, setHandoffConsent] = useState(false);
-  const [handoffBusy, setHandoffBusy] = useState(false);
-  const [handoffUrl, setHandoffUrl] = useState("");
-  const [handoffError, setHandoffError] = useState("");
-  const handoffRequest = useRef<AbortController | null>(null);
-  const handoffAccess = useRef<string | undefined>(undefined);
-
-  useEffect(() => {
-    const readiness = createHandoffReadiness({
-      readFragment: () => window.location.hash,
-      fetchStatus: async headers => {
-        const response = await fetch("/api/website-handoff", { cache: "no-store", headers });
-        return response.ok && (await response.json() as { enabled?: boolean })?.enabled === true;
-      },
-      onAccess: access => { handoffAccess.current = access; },
-      onReady: setHandoffAvailable,
-      onChecking: setHandoffChecking,
-    });
-    const check = () => { void readiness.check(); };
-    const visible = () => { if (document.visibilityState === "visible") check(); };
-    handoffCheck.current = check;
-    window.addEventListener("hashchange", check);
-    window.addEventListener("pageshow", check);
-    window.addEventListener("focus", check);
-    document.addEventListener("visibilitychange", visible);
-    check();
-    return () => {
-      readiness.stop();
-      handoffCheck.current = null;
-      window.removeEventListener("hashchange", check);
-      window.removeEventListener("pageshow", check);
-      window.removeEventListener("focus", check);
-      document.removeEventListener("visibilitychange", visible);
-      handoffRequest.current?.abort();
-      handoffRequest.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (stage === "summary") handoffCheck.current?.();
-  }, [stage]);
-
-  function resetHandoff() {
-    // Invalidate before aborting: a completed response may already be queued.
-    const pending = handoffRequest.current;
-    handoffRequest.current = null;
-    pending?.abort();
-    setHandoffBusy(false);
-    setHandoffUrl("");
-    setHandoffConsent(false);
-    setHandoffError("");
-  }
   function changeServiceAge(value: string) {
-    resetHandoff(); setServiceAge(['under14','14to17','adult'].includes(value) ? value : 'unknown');
+    setServiceAge(['under14','14to17','adult'].includes(value) ? value : 'unknown');
     setAnswers({}); setNotes(''); setNoDifficulty(false); setCopied('idle'); setStage('choose');
   }
   const groupTasks = useMemo(() => microTrials.filter(t => t.category === category), [category]);
@@ -172,17 +115,17 @@ export default function MobileJourneyHome() {
   const complete = activeCriteria.every(q => isAnswered(answers[q.id]));
   function begin(selected: TrialCategory) {
     if (serviceAge !== "adult") return;
-    setCategory(selected); setTaskId(""); setAnswers({}); setNotes(""); setNoDifficulty(false); setCopied("idle"); resetHandoff(); setStage("task");
+    setCategory(selected); setTaskId(""); setAnswers({}); setNotes(""); setNoDifficulty(false); setCopied("idle"); setStage("task");
   }
   function selectTask(id: string) {
-    setTaskId(id); setAnswers({}); setNotes(""); setNoDifficulty(false); setCopied("idle"); resetHandoff();
+    setTaskId(id); setAnswers({}); setNotes(""); setNoDifficulty(false); setCopied("idle");
   }
   function next() {
     setCopied("idle");
     setStage(stages[Math.min(stageIndex + 1, stages.length - 1)]);
   }
   function back() { setStage(stages[Math.max(0, stageIndex - 1)]); }
-  function setAnswer(id: ScaleKey, value: Answer) { setAnswers(a => ({ ...a, [id]: value })); resetHandoff(); }
+  function setAnswer(id: ScaleKey, value: Answer) { setAnswers(a => ({ ...a, [id]: value })); }
   const observations = interest.filter(q => typeof answers[q.id] === "number")
     .sort((a,b) => (answers[b.id] as number) - (answers[a.id] as number));
   const top = observations.filter(q => answers[q.id] === answers[observations[0]?.id]);
@@ -197,39 +140,6 @@ export default function MobileJourneyHome() {
     ...(notes.trim() ? [`Мої нотатки: ${notes.trim()}`] : []),
     "Одна проба не визначає професію чи здібності; це спостереження для наступного кроку.",
   ].join("\n");
-  async function prepareTelegramHandoff() {
-    if (serviceAge !== "adult" || !handoffAvailable || !handoffConsent || handoffBusy || handoffRequest.current) return;
-    const request = new AbortController();
-    handoffRequest.current = request;
-    setHandoffBusy(true);
-    setHandoffError("");
-    setHandoffUrl("");
-    try {
-      const response = await fetch("/api/website-handoff", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...pilotHeaders(handoffAccess.current) },
-        body: JSON.stringify({ consent: true, contextVersion: 2, trialReflection: buildTrialReflection({trialId:task.id,answers,noDifficulty,notes},new Date().toISOString()), ageDeclaration: {band:serviceAge,version:"age-declaration/v1"} }),
-        signal: request.signal,
-      });
-      const data: { telegramUrl?: string; error?: string } = await response.json();
-      if (handoffRequest.current !== request) return;
-      if (!response.ok || typeof data.telegramUrl !== "string" ||
-          !new RegExp('^https://t[.]me/' + svoyeTelegramBotUsername + '[?]start=sv_[A-Za-z0-9_-]{43}$').test(data.telegramUrl)) {
-        throw new Error(data.error || "Неможливо підготувати посилання.");
-      }
-      setHandoffUrl(data.telegramUrl);
-    } catch (error) {
-      if (handoffRequest.current === request) {
-        setHandoffError(error instanceof Error ? error.message : "Спробуй ще раз або скопіюй підсумок.");
-      }
-    } finally {
-      if (handoffRequest.current === request) {
-        handoffRequest.current = null;
-        setHandoffBusy(false);
-      }
-    }
-  }
-
   async function copySummary() {
     try {
       await navigator.clipboard.writeText(summary);
@@ -316,7 +226,7 @@ export default function MobileJourneyHome() {
           </div>
           <label className="v2-task-label" htmlFor="v2-notes">Що ти помітив/-ла? <span>(за бажанням)</span></label>
           <textarea id="v2-notes" rows={2} maxLength={1500} value={notes}
-            onChange={e => { setNotes(e.target.value); resetHandoff(); }} placeholder="Що вдалося, що хочеться змінити?"/>
+            onChange={e => { setNotes(e.target.value); }} placeholder="Що вдалося, що хочеться змінити?"/>
           <div className="v2-actions"><button className="v2-button" type="button" onClick={next}>Перейти до рефлексії <ArrowRight size={19}/></button>
             <button className="v2-textbtn" type="button" onClick={() => setStage("choose")}>Обрати інший напрям</button></div>
         </>}
@@ -327,7 +237,7 @@ export default function MobileJourneyHome() {
             <h1>{stage === "interest" ? <>Що тебе <em>зачепило?</em></> : stage === "difficulty" ? <>Як було зі <em>складнощами?</em></> : <>Що хочеться <em>далі?</em></>}</h1>
             <p>{stage === "interest" ? "Які дії викликали цікавість у цій конкретній пробі?" : stage === "difficulty" ? "Оціни власну реакцію, а не правильність виконання." : "Що ти хочеш дослідити після цього досвіду?"}</p>
           </div>
-          {stage === "difficulty" && <label className="v2-nodiff"><input type="checkbox" checked={noDifficulty} onChange={e => { setNoDifficulty(e.target.checked); resetHandoff(); }}/> Складнощів не було</label>}
+          {stage === "difficulty" && <label className="v2-nodiff"><input type="checkbox" checked={noDifficulty} onChange={e => { setNoDifficulty(e.target.checked); }}/> Складнощів не було</label>}
           <div className="v2-reflection">
             {stage === "difficulty" && noDifficulty ? <div className="v2-card"><p>Тоді цей блок можна пропустити. Це теж важливе спостереження.</p></div> :
               activeCriteria.map(c => <RatingScale key={c.id} item={c} value={answers[c.id]} onChange={value => setAnswer(c.id, value)} />)}
@@ -353,31 +263,16 @@ export default function MobileJourneyHome() {
             </div>
           </div>
           <div className="v2-handoff"><h2>Продовжити в Telegram</h2>
-            <p>Підсумок твоєї проби може стати початком розмови з асистентом «Своє». Спочатку перевір, що саме передаватиметься.</p>
+            <p>Відповіді й нотатки цієї проби залишаються на цій сторінці. Вони не передаються боту чи консультанту автоматично.</p>
             <details className="v2-handoff-preview">
-              <summary>Переглянути повний текст підсумку</summary>
+              <summary>Переглянути свій повний підсумок</summary>
               <div className="v2-handoff-preview-text">{summary}</div>
             </details>
-            {handoffAvailable ? <>
-              <label className="v2-consent">
-                <input type="checkbox" checked={handoffConsent} onChange={event => {
-                  if (!event.target.checked) resetHandoff();
-                  else { setHandoffConsent(true); setHandoffError(""); }
-                }} />
-                <span>Я погоджуюся передати підсумок, відповіді, пропуски й нотатки цієї проби боту «Своє» для продовження розмови. Код передачі діятиме 10 хвилин і спрацює один раз.</span>
-              </label>
-              {!handoffUrl ? <button className="v2-button dark" type="button"
-                disabled={!handoffConsent || handoffBusy} onClick={prepareTelegramHandoff}>
-                {handoffBusy ? "Готуємо перехід…" : "Підготувати перехід у Telegram"} <ArrowRight size={18}/>
-              </button> : <div className="v2-handoff-success" role="status">
-                <p>Твій одноразовий перехід підготовлено. Він не містить відповідей у посиланні й діє 10 хвилин.</p>
-                <a className="v2-button dark" href={handoffUrl} rel="noopener noreferrer">Відкрити Telegram <ArrowRight size={18}/></a>
-              </div>}
-              {handoffError && <p className="v2-handoff-error" role="alert">{handoffError}</p>}
-            </> : <div className="v2-handoff-simple"><p className="v2-helpnote">Зараз автоматична передача підсумку недоступна. Перевір підключення ще раз або скопіюй підсумок для ручного продовження.</p><button className="v2-textbtn" type="button" disabled={handoffChecking} onClick={() => handoffCheck.current?.()}>{handoffChecking ? "Перевіряємо підключення…" : "Перевірити підключення"}</button><a className="v2-button dark" href={serviceAge === "adult" ? svoyeTelegramLink("site_trial") : undefined} aria-disabled={serviceAge !== "adult"} target="_blank" rel="noopener noreferrer">Відкрити Telegram <ArrowRight size={18}/></a></div>}
+            <p>У Telegram можна окремо описати свій запит і домовитися про консультацію. Перед розмовою бот покаже умови обробки даних.</p>
+            <a className="v2-button dark" href={svoyeTelegramLink("site_trial")} target="_blank" rel="noopener noreferrer">Відкрити Telegram <ArrowRight size={18}/></a>
             <div className="v2-handoff-copy">
               <button className="v2-button v2-copy-button" type="button" onClick={copySummary}>
-                {copied === "done" ? <><Check size={19}/> Підсумок скопійовано</> : <><ClipboardCopy size={19}/> Скопіювати підсумок</>}
+                {copied === "done" ? <><Check size={19}/> Підсумок скопійовано для себе</> : <><ClipboardCopy size={19}/> Скопіювати для себе</>}
               </button>
               {copied === "manual" && <><label className="v2-task-label" htmlFor="v2-copy-fallback">Скопіюй цей текст:</label>
                 <textarea id="v2-copy-fallback" rows={8} readOnly value={summary} onFocus={e => e.target.select()} /></>}

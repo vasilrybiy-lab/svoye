@@ -7,6 +7,6 @@ const candidate = (process.env.NEXT_PUBLIC_SVOYE_BOT_USERNAME ?? "").trim().repl
 export const svoyeTelegramBotUsername =
   /^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(candidate) ? candidate : brandedUsername;
 
-export function svoyeTelegramLink(entry: SvoyeEntry): string {
-  return `https://t.me/${svoyeTelegramBotUsername}?start=${entry}`;
+export function svoyeTelegramLink(_entry: SvoyeEntry): string {
+  return `https://t.me/${svoyeTelegramBotUsername}?start=sv_site`;
 }
