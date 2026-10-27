@@ -49,7 +49,8 @@ export async function directWebsiteReady(): Promise<boolean> {
 }
 export async function prepareDirectWebsite(input: { messageText?: string; transferResults: boolean }) {
   const messageText = input.transferResults ? input.messageText || "" : "Сайт: продовження без результатів проби.";
-  const fail = (status = 502) => ({status, body:{error:"Передачу не підтверджено. Не повторюй запит; скопіюй підсумок для ручного продовження."}});
+  let phase = "CONFIGURATION";
+  const fail = (status = 502) => ({status, body:{code:phase,error:"Передачу не підтверджено. Не повторюй запит; скопіюй підсумок для ручного продовження."}});
   if (!isDirectNeonConfigured() || !messageText.trim() || messageText.length > 4000 || Buffer.byteLength(messageText,"utf8") > 8000) return fail(503);
   const token = randomBytes(32).toString("base64url");
   const tokenHash = createHash("sha256").update(token,"utf8").digest("hex");
@@ -58,7 +59,9 @@ export async function prepareDirectWebsite(input: { messageText?: string; transf
   }).query(STORE_SQL,[JSON.stringify(payload)]);
   let requestId: string | undefined;
   try {
+    phase = "STORE_QUERY";
     const result = await query({op:"store",mode:"ordinary",message_text:messageText.trim(),token_hash:tokenHash,consent:true,notice_version:"website-consultation/v2",transfer_results:input.transferResults,age_band:"adult",age_version:"age-declaration/v1"});
+    phase = "STORE_BINDING";
     const row = result.rows?.length === 1 ? result.rows[0] : undefined;
     if (row?.connected_role !== "svoe_website_test_runtime" || row.database !== "neondb" ||
         row.project_id !== "morning-cake-04594300" || row.branch_id !== "br-delicate-heart-b7h6nwzw") return fail();
@@ -66,6 +69,7 @@ export async function prepareDirectWebsite(input: { messageText?: string; transf
     if (stored?.stored === false) return fail(["daily_limit","cycle_limit"].includes(stored.reason) ? 429 : 503);
     if (stored?.stored !== true || stored.transfer_version !== 2 || !UUID.test(stored.website_request_id || "")) return fail();
     requestId = stored.website_request_id;
+    phase = "STORE_RECEIPT";
     const expiry = stored.expires_at;
     const now = Date.now();
     if (typeof expiry !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(expiry) ||
@@ -73,12 +77,15 @@ export async function prepareDirectWebsite(input: { messageText?: string; transf
         Date.parse(expiry) <= now || Date.parse(expiry) > now + 601000 ||
         !checkReceipt({rows:[{...row,receipt:stored.admission}]},now).allowed) throw Error("STORE_RECEIPT_UNVERIFIED");
     // Only metadata reaches n8n. Text/hash stay in the same Neon transaction.
+    phase = "EXPIRY_TRANSPORT";
     const response = await fetch(expiryEndpoint(process.env)!,{
       method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${process.env.SVOYE_HANDOFF_WEBHOOK_SECRET}`},
       body:JSON.stringify({source:"svoye_website",website_request_id:requestId,expires_at:expiry}),
       cache:"no-store",redirect:"error",signal:AbortSignal.timeout(8000),
     });
+    phase = "EXPIRY_HTTP_" + response.status;
     const ack = await queueAck(response);
+    phase = "EXPIRY_ACK";
     if (ack.queued !== true || ack.website_request_id !== requestId || ack.expires_at !== expiry) throw Error("EXPIRY_QUEUE_UNCONFIRMED");
     return {status:200,body:{telegramUrl:`https://t.me/svoe_live_bot?start=sv_${token}`,expiresInSeconds:Math.max(0,Math.floor((Date.parse(expiry)-Date.now())/1000))}};
   } catch {
