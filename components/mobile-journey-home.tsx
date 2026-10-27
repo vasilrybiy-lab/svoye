@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type CSSProperties } from "react";
-import { svoyeTelegramLink } from "@/lib/telegram-links";
+import WebsiteTelegramConsent from "@/components/website-telegram-consent";
 import {
   ArrowLeft, ArrowRight, Check, ChevronRight, ClipboardCopy,
   Compass, FlaskConical, Hammer, HeartHandshake, LifeBuoy,
@@ -15,7 +15,7 @@ import {
 import { websiteAgeMessage } from "@/lib/website-service-age.mjs";
 
 type Audience = "teen" | "parent";
-type Stage = "choose" | "task" | "interest" | "difficulty" | "continue" | "summary";
+type Stage = "age" | "contact" | "choose" | "task" | "interest" | "difficulty" | "continue" | "summary";
 type ScaleKey = "reason" | "idea" | "make" | "test" | "people" | "persist" | "help" | "bored" | "repeat" | "different";
 type Answer = number | null | undefined;
 type Answers = Partial<Record<ScaleKey, Answer>>;
@@ -104,7 +104,7 @@ export default function MobileJourneyHome() {
   const [copied, setCopied] = useState<"idle" | "done" | "manual">("idle");
   function changeServiceAge(value: string) {
     setServiceAge(['under14','14to17','adult'].includes(value) ? value : 'unknown');
-    setAnswers({}); setNotes(''); setNoDifficulty(false); setCopied('idle'); setStage('choose');
+    setCopied('idle');
   }
   const groupTasks = useMemo(() => microTrials.filter(t => t.category === category), [category]);
   const task: MicroTrial = groupTasks.find(t => t.id === taskId) ?? groupTasks[0];
@@ -114,8 +114,7 @@ export default function MobileJourneyHome() {
   const activeCriteria = stage === "interest" ? interest : stage === "difficulty" ? difficultyCriteria : continuationCriteria;
   const complete = activeCriteria.every(q => isAnswered(answers[q.id]));
   function begin(selected: TrialCategory) {
-    if (serviceAge !== "adult") return;
-    setCategory(selected); setTaskId(""); setAnswers({}); setNotes(""); setNoDifficulty(false); setCopied("idle"); setStage("task");
+    setCategory(selected); setTaskId(""); setAnswers({}); setNotes(""); setNoDifficulty(false); setCopied("idle"); setStage(serviceAge === "adult" ? "task" : "age");
   }
   function selectTask(id: string) {
     setTaskId(id); setAnswers({}); setNotes(""); setNoDifficulty(false); setCopied("idle");
@@ -157,13 +156,6 @@ export default function MobileJourneyHome() {
       </details>
     </header>
     <div className="v2-content">
-      <fieldset className="v2-card"><legend>Перед власною пробою</legend>
-        <label htmlFor="svoe-service-age">Твоя вікова група</label>
-        <select id="svoe-service-age" value={serviceAge} onChange={event => changeServiceAge(event.target.value)} aria-describedby="svoe-age-status">
-          <option value="unknown">Обери групу</option><option value="under14">До 14</option><option value="14to17">14–17</option><option value="adult">18+</option>
-        </select><p id="svoe-age-status" role="status">{websiteAgeMessage(serviceAge)}</p>
-        <p>Не вказуй дату народження чи документи. Вибір іншої групи очищає відповіді поточної проби.</p>
-      </fieldset>
       {stage === "choose" ? <>
         <div className="v2-audience" role="group" aria-label="Для кого сайт">
           <button type="button" className={audience === "teen" ? "selected" : ""} onClick={() => setAudience("teen")}>Я школяр/-ка</button>
@@ -174,14 +166,14 @@ export default function MobileJourneyHome() {
             <p className="v2-eyebrow">КИМ СТАТИ? КУДИ ВСТУПАТИ?</p>
             <h1>Знайди свій напрям.<br/><em>Перевір у дії.</em></h1>
             <p className="v2-lead">Не знаєш, що обрати після школи? Почни з того, що тобі цікаво.</p>
-            <a className="v2-button dark v2-telegram-entry" href={serviceAge === "adult" ? svoyeTelegramLink("site_teen") : undefined} aria-disabled={serviceAge !== "adult"} target="_blank" rel="noopener noreferrer">Поставити запитання в Telegram <ArrowRight size={18}/></a>
+            <button type="button" className="v2-button dark v2-telegram-entry" onClick={() => setStage("contact")}>Поставити запитання в Telegram <ArrowRight size={18}/></button>
             <div className="v2-ribbons" aria-hidden="true"><span/><span/></div>
           </div>
           <section className="v2-directions" id="trials" aria-labelledby="v2-directions-title">
             <h2 id="v2-directions-title">Що тобі ближче?</h2>
             <div className="v2-direction-list">{directions.map(dir => {
               const Icon = dir.icon;
-              return <button type="button" key={dir.id} className={`v2-direction v2-${dir.tint}`} disabled={serviceAge !== "adult"} onClick={() => begin(dir.id)}>
+              return <button type="button" key={dir.id} className={`v2-direction v2-${dir.tint}`} onClick={() => begin(dir.id)}>
                 <span className="v2-dir-icon"><Icon size={24}/></span>
                 <span className="v2-dir-text"><strong>{dir.label}</strong><small>{dir.subtitle}</small></span><ChevronRight size={23}/>
               </button>;
@@ -191,7 +183,7 @@ export default function MobileJourneyHome() {
           <div><p className="v2-eyebrow">ПІСЛЯ ШКОЛИ · ПРОФЕСІЯ ТА НАВЧАННЯ</p>
             <h1>Допоможіть дитині <em>знайти своє.</em></h1>
             <p className="v2-lead">Спокійніше дослідити інтереси, навчання та перспективи розвитку. Без ярликів і тиску.</p>
-            <a className="v2-button dark v2-telegram-entry" href={serviceAge === "adult" ? svoyeTelegramLink("site_parent") : undefined} aria-disabled={serviceAge !== "adult"} target="_blank" rel="noopener noreferrer">Поспілкуватися з ботом у Telegram <ArrowRight size={18}/></a>
+            <button type="button" className="v2-button dark v2-telegram-entry" onClick={() => setStage("contact")}>Поспілкуватися з ботом у Telegram <ArrowRight size={18}/></button>
           </div>
           <div className="v2-card"><h2>З чого почати?</h2>
             <p>З розмови та невеликої практичної проби. Підліток залишається головним учасником рішення.</p>
@@ -199,7 +191,20 @@ export default function MobileJourneyHome() {
             <button type="button" className="v2-textbtn" onClick={() => setAudience("teen")}>Подивитися малі проби</button>
           </div>
         </div>}
+      </> : stage === "age" || stage === "contact" ? <>
+        <button type="button" className="v2-back" onClick={() => setStage("choose")}><ArrowLeft size={18}/> До напрямів</button>
+        <div className="v2-stage-head"><p className="v2-eyebrow">{stage === "age" ? `${group.label.toUpperCase()} · МАЛА ПРОБА` : "РОЗМОВА У TELEGRAM"}</p><h1>{stage === "age" ? "Спробуй у дії." : "Почнімо з розмови."}</h1></div>
+        {stage === "age" && <div className="v2-card"><p className="v2-mini-tag">{task.minutes}</p><h2>{task.title}</h2><p>{task.intro}</p></div>}
+        {stage === "age" || serviceAge !== "adult" ? <fieldset className="v2-card v2-age-card"><legend>Перш ніж почати</legend>
+          <p id="svoe-age-label">Твоя вікова група</p>
+          <div className="v2-age-options" role="radiogroup" aria-labelledby="svoe-age-label" aria-describedby="svoe-age-status">{[{value:"under14",label:"До 14"},{value:"14to17",label:"14–17"},{value:"adult",label:"18+"}].map(option => <label key={option.value}><input type="radio" name="service-age" value={option.value} checked={serviceAge === option.value} onChange={event => changeServiceAge(event.target.value)}/><span>{option.label}</span></label>)}</div>
+          <p className="v2-helpnote">Дату народження не запитуємо. Зараз проба й бот доступні з 18 років.</p>
+          <p id="svoe-age-status" role="status">{serviceAge !== "unknown" && serviceAge !== "adult" && websiteAgeMessage(serviceAge)}</p>
+          {stage === "age" && <button type="button" className="v2-button dark" disabled={serviceAge !== "adult"} onClick={() => setStage("task")}>Почати пробу <ArrowRight size={18}/></button>}
+        </fieldset> : <p className="v2-age-summary">Вік: 18+ · <button type="button" className="v2-textbtn" onClick={() => changeServiceAge("unknown")}>Змінити</button></p>}
+        {stage === "contact" && serviceAge === "adult" && <WebsiteTelegramConsent key={serviceAge} age={serviceAge}/>}
       </> : serviceAge === "adult" ? <>
+        <p className="v2-age-summary">Вік: 18+ · <button type="button" className="v2-textbtn" onClick={() => setStage("age")}>Змінити</button></p>
         <div className="v2-progress">
           <button type="button" className="v2-back" onClick={back}><ArrowLeft size={18}/> Назад</button>
           <div className="v2-progress-dots" role="progressbar" aria-label="Проходження проби" aria-valuemin={1} aria-valuemax={stages.length} aria-valuenow={stageIndex+1}>{stages.map((s,i) => <span key={s} className={stageIndex===i ? "current" : ""}/>)}</div>
@@ -262,14 +267,8 @@ export default function MobileJourneyHome() {
               <p>Твої спостереження можуть стати початком розмови про професії, програми навчання й нові проби.</p>
             </div>
           </div>
-          <div className="v2-handoff"><h2>Продовжити в Telegram</h2>
-            <p>Відповіді й нотатки цієї проби залишаються на цій сторінці. Вони не передаються боту чи консультанту автоматично.</p>
-            <details className="v2-handoff-preview">
-              <summary>Переглянути свій повний підсумок</summary>
-              <div className="v2-handoff-preview-text">{summary}</div>
-            </details>
-            <p>У Telegram можна окремо описати свій запит і домовитися про консультацію. Перед розмовою бот покаже умови обробки даних.</p>
-            <a className="v2-button dark" href={svoyeTelegramLink("site_trial")} target="_blank" rel="noopener noreferrer">Відкрити Telegram <ArrowRight size={18}/></a>
+          <WebsiteTelegramConsent age={serviceAge} messageText={summary}/>
+          <div className="v2-local-results">
             <div className="v2-handoff-copy">
               <button className="v2-button v2-copy-button" type="button" onClick={copySummary}>
                 {copied === "done" ? <><Check size={19}/> Підсумок скопійовано для себе</> : <><ClipboardCopy size={19}/> Скопіювати для себе</>}

@@ -4,13 +4,9 @@ import { createHash, randomBytes } from "node:crypto";
 import { isAdmissionConfigured } from "./website-admission";
 import { checkReceipt } from "./website-admission-policy.cjs";
 
-import { validateWebsiteAgeDeclaration } from "./website-service-age.mjs";
-import { prepareSyntheticTrialStore, readTrialStoreAck } from "./trial-store-request.mjs";
-
 type Environment = Record<string, string | undefined>;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
-const STORE_SQL = "SELECT current_user::text AS connected_role,current_database()::text AS database,current_setting('neon.project_id',true) AS project_id,current_setting('neon.branch_id',true) AS branch_id,CASE WHEN current_user='svoe_website_test_runtime' AND current_database()='neondb' AND current_setting('neon.project_id',true)='morning-cake-04594300' AND current_setting('neon.branch_id',true)='br-delicate-heart-b7h6nwzw' THEN public.svoe_age_website_store($1::jsonb) ELSE NULL::jsonb END AS receipt;";
-const TRIAL_STORE_SQL = STORE_SQL.replace("public.svoe_age_website_store", "public.svoe_trial_website_store");
+const STORE_SQL = "SELECT current_user::text AS connected_role,current_database()::text AS database,current_setting('neon.project_id',true) AS project_id,current_setting('neon.branch_id',true) AS branch_id,CASE WHEN current_user='svoe_website_test_runtime' AND current_database()='neondb' AND current_setting('neon.project_id',true)='morning-cake-04594300' AND current_setting('neon.branch_id',true)='br-delicate-heart-b7h6nwzw' THEN public.svoe_test_website_store($1::jsonb) ELSE NULL::jsonb END AS receipt;";
 function expiryEndpoint(env: Environment): string | undefined {
   try {
     const u = new URL(env.SVOYE_HANDOFF_EXPIRY_WEBHOOK_URL || "");
@@ -41,52 +37,37 @@ async function queueAck(response: Response): Promise<Record<string, unknown>> {
     throw Error("EXPIRY_QUEUE_UNCONFIRMED");
   } finally { await reader.cancel().catch(() => {}); }
 }
-const failure = (status = 502) => ({status, body:{error:"Передачу не підтверджено. Не повторюй запит; скопіюй підсумок для ручного продовження."}});
-export function isTrialDirectConfigured(env: Environment = process.env): boolean {
-  return env.SVOYE_HANDOFF_TRIAL_MODE === "synthetic-trial-v1" && isDirectNeonConfigured(env);
+export async function directWebsiteReady(): Promise<boolean> {
+  if (!isDirectNeonConfigured()) return false;
+  try {
+    const result = await neon(process.env.SVOYE_HANDOFF_ADMISSION_DATABASE_URL!, {
+      fullResults:true,arrayMode:false,fetchOptions:{cache:"no-store",redirect:"error",signal:AbortSignal.timeout(5000)},
+    }).query(STORE_SQL,[JSON.stringify({op:"status"})]);
+    const r = result.rows?.length === 1 ? result.rows[0] : undefined;
+    return r?.connected_role === "svoe_website_test_runtime" && r.database === "neondb" && r.project_id === "morning-cake-04594300" && r.branch_id === "br-delicate-heart-b7h6nwzw" && r.receipt?.enabled === true;
+  } catch { return false; }
 }
-export async function prepareDirectWebsite(messageText: string, mode: "synthetic" | "normal" | "pilot", ageDeclaration: unknown) {
-  if (mode !== "synthetic" || !validateWebsiteAgeDeclaration(ageDeclaration)) return failure(503);
-  if (!isDirectNeonConfigured() || !messageText.trim() || messageText.length > 4000 || Buffer.byteLength(messageText,"utf8") > 8000) return failure(503);
-  return executeHandoff(hash => ({op:"store",mode,message_text:messageText.trim(),token_hash:hash,age_declaration:ageDeclaration}),false);
-}
-export async function prepareDirectTrial(body: unknown, verifiedSyntheticCanary: boolean) {
-  if (!verifiedSyntheticCanary || !isTrialDirectConfigured()) return failure(503);
-  try { prepareSyntheticTrialStore(body,"0".repeat(64)); } catch { return failure(503); }
-  return executeHandoff(hash => prepareSyntheticTrialStore(body,hash),true);
-}
-async function executeHandoff(makePayload: (hash: string) => Record<string, unknown>, typed: boolean) {
-  const fail = failure;
+export async function prepareDirectWebsite(input: { messageText?: string; transferResults: boolean }) {
+  const messageText = input.transferResults ? input.messageText || "" : "Сайт: продовження без результатів проби.";
+  const fail = (status = 502) => ({status, body:{error:"Передачу не підтверджено. Не повторюй запит; скопіюй підсумок для ручного продовження."}});
+  if (!isDirectNeonConfigured() || !messageText.trim() || messageText.length > 4000 || Buffer.byteLength(messageText,"utf8") > 8000) return fail(503);
   const token = randomBytes(32).toString("base64url");
   const tokenHash = createHash("sha256").update(token,"utf8").digest("hex");
   const query = (payload: Record<string, unknown>) => neon(process.env.SVOYE_HANDOFF_ADMISSION_DATABASE_URL!, {
     fullResults:true,arrayMode:false,fetchOptions:{cache:"no-store",redirect:"error",signal:AbortSignal.timeout(5000)},
-  }).query(typed ? TRIAL_STORE_SQL : STORE_SQL,[JSON.stringify(payload)]);
+  }).query(STORE_SQL,[JSON.stringify(payload)]);
   let requestId: string | undefined;
-  let attempted = false;
   try {
-    attempted = true;
-    const result = await query(makePayload(tokenHash));
+    const result = await query({op:"store",mode:"ordinary",message_text:messageText.trim(),token_hash:tokenHash,consent:true,notice_version:"website-consultation/v2",transfer_results:input.transferResults,age_band:"adult",age_version:"age-declaration/v1"});
     const row = result.rows?.length === 1 ? result.rows[0] : undefined;
     if (row?.connected_role !== "svoe_website_test_runtime" || row.database !== "neondb" ||
-        row.project_id !== "morning-cake-04594300" || row.branch_id !== "br-delicate-heart-b7h6nwzw") {
-      if (typed) throw Error("TRIAL_DATABASE_BINDING_UNCONFIRMED");
-      return fail();
-    }
+        row.project_id !== "morning-cake-04594300" || row.branch_id !== "br-delicate-heart-b7h6nwzw") return fail();
     const stored = row.receipt;
     if (stored?.stored === false) return fail(["daily_limit","cycle_limit"].includes(stored.reason) ? 429 : 503);
-    if (stored?.stored !== true || stored.transfer_version !== 2 || !UUID.test(stored.website_request_id || "")) {
-      if (typed) throw Error("TRIAL_STORE_UNCONFIRMED");
-      return fail();
-    }
+    if (stored?.stored !== true || stored.transfer_version !== 2 || !UUID.test(stored.website_request_id || "")) return fail();
     requestId = stored.website_request_id;
     const expiry = stored.expires_at;
     const now = Date.now();
-    if (typed) readTrialStoreAck(stored,now);
-    const age = stored.website_age;
-    if (age?.band !== 'adult' || age.version !== 'age-declaration/v1' || age.assurance !== 'self_declared' ||
-      typeof age.declared_at !== 'string' || !Number.isFinite(Date.parse(age.declared_at)) ||
-      Date.parse(age.declared_at)>now || Date.parse(age.declared_at)<now-600000 || Date.parse(age.declared_at)>=Date.parse(expiry)) throw Error('WEBSITE_AGE_RECEIPT');
     if (typeof expiry !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(expiry) ||
         !Number.isFinite(Date.parse(expiry)) || new Date(expiry).toISOString() !== expiry ||
         Date.parse(expiry) <= now || Date.parse(expiry) > now + 601000 ||
@@ -101,9 +82,9 @@ async function executeHandoff(makePayload: (hash: string) => Record<string, unkn
     if (ack.queued !== true || ack.website_request_id !== requestId || ack.expires_at !== expiry) throw Error("EXPIRY_QUEUE_UNCONFIRMED");
     return {status:200,body:{telegramUrl:`https://t.me/svoe_live_bot?start=sv_${token}`,expiresInSeconds:Math.max(0,Math.floor((Date.parse(expiry)-Date.now())/1000))}};
   } catch {
-    if ((typed && attempted) || requestId) {
+    if (requestId) {
       // Exact own unclaimed row only; quota is consumed, never refunded/retried.
-      await query({op:"abort",...(requestId ? {website_request_id:requestId} : {}),token_hash:tokenHash}).catch(() => {});
+      await query({op:"abort",website_request_id:requestId,token_hash:tokenHash}).catch(() => {});
     }
     return fail();
   }

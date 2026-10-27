@@ -168,3 +168,24 @@
 .related-list li{border-top:1.5px solid #cfccc0;padding:14px 0}.related-list li:last-child{border-bottom:1.5px solid #cfccc0}.related-list a{font-weight:700;font-size:18px;line-height:1.4}
 .hub-list li{border-top:1.5px solid #cfccc0;padding:20px 0}.hub-list li:last-child{border-bottom:1.5px solid #cfccc0}.hub-list a{display:block}.hub-list strong{display:block;font-size:22px;letter-spacing:-.5px;color:#111b28;line-height:1.25}.hub-list span{display:block;margin-top:6px;font-size:16px;color:#4b5563;line-height:1.5}
 .useful-more{margin-top:28px;font-weight:800}.useful-more a{border-bottom:1px solid #111b28}
+
+/* Agreed mobile age and consent placement; same site palette and typography. */
+.v2-age-card { min-width: 0; margin: 24px 0; }
+.v2-age-card legend { font-size: 1.35rem; font-weight: 750; padding: 0 6px; }
+.v2-age-options { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 14px 0; }
+.v2-age-options label { min-height: 88px; border: 1px solid #cdd1d8; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; cursor: pointer; background: #fff; }
+.v2-age-options label:has(input:checked) { border-color: #173deb; background: #eef1ff; box-shadow: 0 0 0 1px #173deb; }
+.v2-age-options input { width: 22px; height: 22px; accent-color: #173deb; }
+.v2-age-options span { font-weight: 700; }
+.v2-age-summary { font-size: .9rem; color: #596170; margin: 16px 0; }
+.v2-age-summary .v2-textbtn { font-size: inherit; }
+.v2-consent-card { padding: 22px; border: 1px solid #d9dce2; border-radius: 20px; background: #fff; margin: 20px 0; }
+.v2-consent-card h3 { font-size: 1.3rem; margin-top: 0; }
+.v2-privacy-details { margin: 18px 0; }
+.v2-privacy-details summary { cursor: pointer; color: #173deb; text-decoration: underline; }
+.v2-privacy-details p { font-size: .95rem; line-height: 1.6; }
+.v2-consent-choice { display: flex; align-items: flex-start; gap: 14px; margin: 22px 0; line-height: 1.5; cursor: pointer; }
+.v2-consent-choice input { flex: 0 0 auto; width: 24px; height: 24px; margin: 3px 0 0; accent-color: #173deb; }
+.v2-consent-choice small { display: block; color: #596170; font-size: .9rem; margin-top: 5px; }
+.v2-privacy-contact { color: #596170; font-size: .82rem; line-height: 1.5; }
+.v2-local-results { margin: 16px 0; }
