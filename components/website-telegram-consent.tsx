@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 
 export default function WebsiteTelegramConsent({ age, messageText }: { age: string; messageText?: string }) {
@@ -8,16 +8,18 @@ export default function WebsiteTelegramConsent({ age, messageText }: { age: stri
   const [results, setResults] = useState(false);
   const [ready, setReady] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
+  const attempted = useRef(false);
   const [error, setError] = useState("");
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/website-handoff", { cache: "no-store", signal: controller.signal })
-      .then(r => r.ok ? r.json() : null).then(v => setReady(v?.enabled === true))
+      .then(r => r.ok ? r.json() : null).then(v => { if (!controller.signal.aborted) setReady(!!v && typeof v === "object" && "enabled" in v && v.enabled === true); })
       .catch(() => { if (!controller.signal.aborted) setReady(false); });
     return () => controller.abort();
   }, []);
   async function continueToTelegram() {
-    if (!general || age !== "adult" || !ready || busy || error) return;
+    if (!general || age !== "adult" || !ready || busy || error || attempted.current) return;
+    attempted.current = true;
     setBusy(true);
     try {
       const response = await fetch("/api/website-handoff", {
@@ -25,7 +27,8 @@ export default function WebsiteTelegramConsent({ age, messageText }: { age: stri
         signal: AbortSignal.timeout(20000),
         body: JSON.stringify({ consent: true, noticeVersion: "website-consultation/v2", ageDeclaration: { band: age, version: "age-declaration/v1" }, transferResults: !!messageText && results, ...(messageText && results ? { messageText } : {}) }),
       });
-      const value = await response.json();
+      const raw: unknown = await response.json();
+      const value: Record<string, unknown> = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
       if (!response.ok || typeof value.telegramUrl !== "string" || !/^https:\/\/t\.me\/svoe_live_bot\?start=sv_[A-Za-z0-9_-]{43}$/.test(value.telegramUrl)) {
         throw Error(typeof value.error === "string" ? value.error : "Передачу не підтверджено. Залишайся на сторінці: твої результати доступні нижче.");
       }
