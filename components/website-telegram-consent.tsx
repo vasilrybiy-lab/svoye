@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { optionalSourceBody } from "@/lib/marketing-source-context.mjs";
+import { useWebsiteSourceContext } from "./website-source-provider";
 
 export default function WebsiteTelegramConsent({ age, messageText }: { age: string; messageText?: string }) {
+  const source = useWebsiteSourceContext();
   const [general, setGeneral] = useState(false);
   const [results, setResults] = useState(false);
   const [ready, setReady] = useState<boolean | null>(null);
@@ -22,10 +25,12 @@ export default function WebsiteTelegramConsent({ age, messageText }: { age: stri
     attempted.current = true;
     setBusy(true);
     try {
+      const payload = optionalSourceBody({ consent: true, noticeVersion: "website-consultation/v3", ageDeclaration: { band: age, version: "age-declaration/v1" }, transferResults: !!messageText && results, ...(messageText && results ? { messageText } : {}) }, source, { authorized: general });
+      if (!payload.ok || !payload.body) throw Error("Повідомлення завелике. Результати залишаються на цій сторінці.");
       const response = await fetch("/api/website-handoff", {
         method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
         signal: AbortSignal.timeout(20000),
-        body: JSON.stringify({ consent: true, noticeVersion: "website-consultation/v2", ageDeclaration: { band: age, version: "age-declaration/v1" }, transferResults: !!messageText && results, ...(messageText && results ? { messageText } : {}) }),
+        body: payload.body,
       });
       const raw: unknown = await response.json();
       const value: Record<string, unknown> = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};

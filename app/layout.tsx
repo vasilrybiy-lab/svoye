@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import WebsiteSourceProvider from "@/components/website-source-provider";
 import { SITE_URL } from "@/lib/site";
 
 const TITLE = "Своє — профорієнтація для старшокласників";
@@ -31,6 +32,6 @@ const jsonLd = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="uk"><body>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-    {children}
+    <WebsiteSourceProvider>{children}</WebsiteSourceProvider>
   </body></html>;
 }
