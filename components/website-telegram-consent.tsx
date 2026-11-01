@@ -49,11 +49,12 @@ export default function WebsiteTelegramConsent({ age, messageText }: { age: stri
       <details className="v2-privacy-details"><summary>Докладніше про обробку даних</summary>
         <p>Оператор: Логаза Віталій Васильович. Контакт: <a href="mailto:hello@svoe.live">hello@svoe.live</a>.</p>
         <p>Для AI-відповіді та консультації використовуємо Telegram, n8n, OpenAI, Neon і Vercel. У CRM консультант бачить первісний запит, актуальне резюме й дані запису та може додати робочу нотатку. Повний архів розмови в CRM не ведемо.</p>
+        <p><strong>Джерело звернення.</strong> Якщо ти переходиш за посиланням кампанії, збережемо її мітку разом зі зверненням, щоб оцінити, звідки приходять звернення та записи на консультацію. У маркетинговому звіті показуємо зведені числа без імен, контактів і змісту розмов. Мітка зберігається не довше самого звернення — 180 днів після останнього контакту; відкликання згоди видаляє і цей зв’язок.</p>
         <p>Якщо окремо обереш передачу результатів, бот отримає лише показаний вище текст. Він використає його для відповіді в Telegram; у CRM ці результати й резюме проби не записуємо. Для доставки використовуємо тимчасовий буфер у базі: очищуємо після підтвердженої доставки або закінчення 10 хвилин від підготовки. Посилання одноразове. Без передачі результатів буфер містить лише доказ вибору та службове повідомлення.</p>
         <p>Звернення й резюме зберігаємо 180 днів після останнього контакту. Перегляди та фонові завдання строк не подовжують. Історія в Telegram і зберігання у провайдерів регулюються їхніми правилами.</p>
         <p>Відкликати згоду можна командою /stop у боті. Для запиту щодо даних напиши hello@svoe.live. До переходу дані з цієї форми не надсилаємо; самі чекбокси ще нічого не передають.</p>
       </details>
-      <label className="v2-consent-choice"><input type="checkbox" checked={general} disabled={busy} onChange={e => setGeneral(e.target.checked)} /><span>Погоджуюсь на обробку мого звернення для розмови й консультації.</span></label>
+      <label className="v2-consent-choice"><input type="checkbox" checked={general} disabled={busy} onChange={e => setGeneral(e.target.checked)} /><span>Погоджуюсь на описану обробку мого звернення.</span></label>
       {messageText && <label className="v2-consent-choice"><input type="checkbox" checked={results} disabled={busy} onChange={e => setResults(e.target.checked)} /><span>Хочу передати результати цієї проби боту.<small>Необов’язково — можна продовжити без результатів.</small></span></label>}
     </div>
     <button type="button" className="v2-button dark" disabled={!general || age !== "adult" || ready !== true || busy || !!error} onClick={continueToTelegram}>
