@@ -25,7 +25,7 @@ export default function WebsiteTelegramConsent({ age, messageText }: { age: stri
     attempted.current = true;
     setBusy(true);
     try {
-      const payload = optionalSourceBody({ consent: true, noticeVersion: "website-consultation/v3", ageDeclaration: { band: age, version: "age-declaration/v1" }, transferResults: !!messageText && results, ...(messageText && results ? { messageText } : {}) }, source, { authorized: general });
+      const payload = optionalSourceBody({ consent: true, noticeVersion: "website-consultation/v4", ageDeclaration: { band: age, version: "age-declaration/v1" }, transferResults: !!messageText && results, ...(messageText && results ? { messageText } : {}) }, source, { authorized: general });
       if (!payload.ok || !payload.body) throw Error("Повідомлення завелике. Результати залишаються на цій сторінці.");
       const response = await fetch("/api/website-handoff", {
         method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
@@ -54,7 +54,7 @@ export default function WebsiteTelegramConsent({ age, messageText }: { age: stri
       <details className="v2-privacy-details"><summary>Докладніше про обробку даних</summary>
         <p>Оператор: Логаза Віталій Васильович. Контакт: <a href="mailto:hello@svoe.live">hello@svoe.live</a>.</p>
         <p>Для AI-відповіді та консультації використовуємо Telegram, n8n, OpenAI, Neon і Vercel. У CRM консультант бачить первісний запит, актуальне резюме й дані запису та може додати робочу нотатку. Повний архів розмови в CRM не ведемо.</p>
-        <p><strong>Джерело звернення.</strong> Якщо ти переходиш за посиланням кампанії, збережемо її мітку разом зі зверненням, щоб оцінити, звідки приходять звернення та записи на консультацію. У маркетинговому звіті показуємо зведені числа без імен, контактів і змісту розмов. Мітка зберігається не довше самого звернення — 180 днів після останнього контакту; відкликання згоди видаляє і цей зв’язок.</p>
+        <p><strong>Джерело звернення.</strong> Якщо ти переходиш за посиланням кампанії або розповідаєш, звідки дізнався чи дізналася про «Своє», збережемо джерело разом зі зверненням, щоб оцінити, звідки приходять звернення та записи на консультацію. Джерело зі слів позначаємо окремо від переходу за посиланням. Консультант може уточнити його із зазначенням причини; перше зафіксоване відоме джерело залишається видимим. У маркетинговому звіті показуємо зведені числа без імен, контактів і змісту розмов. Джерело зберігається не довше самого звернення — 180 днів після останнього контакту; відкликання згоди видаляє і цей зв’язок.</p>
         <p>Якщо окремо обереш передачу результатів, бот отримає лише показаний вище текст. Він використає його для відповіді в Telegram; у CRM ці результати й резюме проби не записуємо. Для доставки використовуємо тимчасовий буфер у базі: очищуємо після підтвердженої доставки або закінчення 10 хвилин від підготовки. Посилання одноразове. Без передачі результатів буфер містить лише доказ вибору та службове повідомлення.</p>
         <p>Звернення й резюме зберігаємо 180 днів після останнього контакту. Перегляди та фонові завдання строк не подовжують. Історія в Telegram і зберігання у провайдерів регулюються їхніми правилами.</p>
         <p>Відкликати згоду можна командою /stop у боті. Для запиту щодо даних напиши hello@svoe.live. До переходу дані з цієї форми не надсилаємо; самі чекбокси ще нічого не передають.</p>

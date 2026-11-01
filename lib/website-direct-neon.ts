@@ -48,7 +48,7 @@ export async function directWebsiteReady(): Promise<boolean> {
     return r?.connected_role === "svoe_website_test_runtime" && r.database === "neondb" && r.project_id === "morning-cake-04594300" && r.branch_id === "br-delicate-heart-b7h6nwzw" && r.receipt?.enabled === true;
   } catch { return false; }
 }
-export async function prepareDirectWebsite(input: { messageText?: string; transferResults: boolean; noticeVersion?: "website-consultation/v2" | "website-consultation/v3"; sourceContext?: SourceContext | null }) {
+export async function prepareDirectWebsite(input: { messageText?: string; transferResults: boolean; noticeVersion?: "website-consultation/v2" | "website-consultation/v3" | "website-consultation/v4"; sourceContext?: SourceContext | null }) {
   const messageText = input.transferResults ? input.messageText || "" : "Сайт: продовження без результатів проби.";
   let phase = "CONFIGURATION";
   const fail = (status = 502) => ({status, body:{code:phase,error:"Передачу не підтверджено. Не повторюй запит; скопіюй підсумок для ручного продовження."}});
@@ -61,7 +61,7 @@ export async function prepareDirectWebsite(input: { messageText?: string; transf
   let requestId: string | undefined;
   try {
     phase = "STORE_QUERY";
-    const result = await query({op:"store",mode:"ordinary",message_text:messageText.trim(),token_hash:tokenHash,consent:true,notice_version:input.noticeVersion || "website-consultation/v2",transfer_results:input.transferResults,age_band:"adult",age_version:"age-declaration/v1",...(input.noticeVersion === "website-consultation/v3" && sourceContext(input.sourceContext) ? { source_context:sourceContext(input.sourceContext) } : {})});
+    const result = await query({op:"store",mode:"ordinary",message_text:messageText.trim(),token_hash:tokenHash,consent:true,notice_version:input.noticeVersion || "website-consultation/v2",transfer_results:input.transferResults,age_band:"adult",age_version:"age-declaration/v1",...(["website-consultation/v3", "website-consultation/v4"].includes(input.noticeVersion || "") && sourceContext(input.sourceContext) ? { source_context:sourceContext(input.sourceContext) } : {})});
     phase = "STORE_BINDING";
     const row = result.rows?.length === 1 ? result.rows[0] : undefined;
     if (row?.connected_role !== "svoe_website_test_runtime" || row.database !== "neondb" ||

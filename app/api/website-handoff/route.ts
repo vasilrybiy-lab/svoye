@@ -21,13 +21,13 @@ export async function POST(request: NextRequest) {
   } catch { return NextResponse.json({ error: "Не вдалося прочитати дані." }, { status: 400, headers }); }
   if (!body || typeof body !== "object" || Array.isArray(body) ||
       Object.keys(body).some(k => !["consent", "noticeVersion", "ageDeclaration", "transferResults", "messageText", "sourceContext"].includes(k)) ||
-      body.consent !== true || !["website-consultation/v2", "website-consultation/v3"].includes(body.noticeVersion) ||
+      body.consent !== true || !["website-consultation/v2", "website-consultation/v3", "website-consultation/v4"].includes(body.noticeVersion) ||
       !body.ageDeclaration || Object.keys(body.ageDeclaration).sort().join(",") !== "band,version" ||
       body.ageDeclaration.band !== "adult" || body.ageDeclaration.version !== "age-declaration/v1" ||
       typeof body.transferResults !== "boolean" ||
       (body.transferResults ? typeof body.messageText !== "string" || !body.messageText.trim() || body.messageText.length > 4000 || Buffer.byteLength(body.messageText, "utf8") > 8000 : body.messageText !== undefined)) {
     return NextResponse.json({ error: "Потрібні підтверджений вибір 18+, згода та коректний вибір передачі результатів." }, { status: 400, headers });
   }
-  const result = await prepareDirectWebsite({ messageText: body.transferResults ? body.messageText.trim() : undefined, transferResults: body.transferResults, noticeVersion: body.noticeVersion, sourceContext: body.noticeVersion === "website-consultation/v3" ? sourceContext(body.sourceContext) : null });
+  const result = await prepareDirectWebsite({ messageText: body.transferResults ? body.messageText.trim() : undefined, transferResults: body.transferResults, noticeVersion: body.noticeVersion, sourceContext: ["website-consultation/v3", "website-consultation/v4"].includes(body.noticeVersion) ? sourceContext(body.sourceContext) : null });
   return NextResponse.json(result.body, { status: result.status, headers });
 }
